@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Scan, ArrowLeft, TestTube2, Sparkles, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -38,12 +37,10 @@ export default function PreprodMenu() {
             <div className="flex items-center space-x-6">
               {/* NSFAS Logo */}
               <div className="relative w-16 h-16 bg-white rounded-lg p-2 shadow-lg">
-                <Image
+                <img
                   src="/images/logo.png"
                   alt="NSFAS"
-                  width={48}
-                  height={48}
-                  className="object-contain"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div>
