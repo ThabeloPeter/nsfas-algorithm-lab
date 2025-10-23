@@ -4,8 +4,8 @@
   "description": "Algorithm showcase and testing environment for NSFAS - demonstrating face extraction, verification, and other innovative solutions",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "set NODE_OPTIONS=--max_old_space_size=4096 && next dev",
+    "build": "set NODE_OPTIONS=--max_old_space_size=4096 && next build",
     "start": "next start"
   },
   "keywords": [
