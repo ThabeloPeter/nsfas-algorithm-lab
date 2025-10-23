@@ -1,72 +1,110 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import face_recognition
 import cv2
 import numpy as np
 from PIL import Image
 import io
 import base64
 import fitz  # PyMuPDF
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="NSFAS Face Extraction API", version="1.0.0")
+app = FastAPI(title="NSFAS Face Extraction API - OpenCV", version="2.0.0")
 
-# CORS middleware - allow all origins for preprod testing
+# CORS middleware - allow all origins for testing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your domain
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Initialize OpenCV face detector (Haar Cascade)
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+# Verify cascade loaded successfully
+if face_cascade.empty():
+    logger.error("Failed to load Haar Cascade classifier")
+    raise RuntimeError("Failed to load face detection model")
+
+logger.info("OpenCV Haar Cascade face detector initialized successfully")
+
 def pdf_to_image(pdf_bytes: bytes) -> np.ndarray:
-    """Convert first page of PDF to numpy array image."""
+    """Convert first page of PDF to high-quality numpy array image."""
     try:
         pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
         first_page = pdf_document[0]
         
-        # Render at 2x scale for better quality
-        mat = fitz.Matrix(2.0, 2.0)
-        pix = first_page.get_pixmap(matrix=mat)
+        # Render at 3x scale for HIGH QUALITY
+        # Higher scale = better quality for face detection
+        mat = fitz.Matrix(3.0, 3.0)
+        pix = first_page.get_pixmap(matrix=mat, alpha=False)  # No alpha channel
         
         # Convert to numpy array
         img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
         
-        # Convert RGBA to RGB if needed
+        # Convert to BGR (OpenCV format)
         if pix.n == 4:
-            img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+            img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+        elif pix.n == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         
         pdf_document.close()
-        logger.info(f"PDF converted to image: {img.shape}")
+        logger.info(f"PDF converted to HIGH QUALITY image: {img.shape}")
         return img
     except Exception as e:
         logger.error(f"PDF conversion error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to convert PDF: {str(e)}")
 
-def score_faces(face_locations: list, image_shape: tuple) -> list:
+def detect_faces_opencv(image: np.ndarray) -> List[Tuple[int, int, int, int]]:
+    """
+    Detect faces using OpenCV Haar Cascade.
+    Returns list of face rectangles as (x, y, w, h).
+    """
+    # Convert to grayscale for detection
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Apply histogram equalization to improve detection
+    gray = cv2.equalizeHist(gray)
+    
+    # Detect faces
+    # Parameters: scaleFactor, minNeighbors, minSize
+    faces = face_cascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,      # How much image size is reduced at each scale
+        minNeighbors=5,       # How many neighbors each candidate rectangle should have
+        minSize=(50, 50),     # Minimum face size
+        flags=cv2.CASCADE_SCALE_IMAGE
+    )
+    
+    logger.info(f"OpenCV detected {len(faces)} face(s)")
+    return faces
+
+def score_faces(faces: np.ndarray, image_shape: tuple) -> list:
     """
     Score detected faces based on size and position.
     Prioritizes larger faces closer to the top-center (typical ID photo position).
+    
+    Args:
+        faces: Array of (x, y, w, h) face rectangles
+        image_shape: (height, width) of image
     """
     height, width = image_shape[:2]
     scored_faces = []
     
-    for idx, (top, right, bottom, left) in enumerate(face_locations):
-        # Calculate face dimensions
-        face_width = right - left
-        face_height = bottom - top
-        face_area = face_width * face_height
+    for idx, (x, y, w, h) in enumerate(faces):
+        # Calculate face area
+        face_area = w * h
         
         # Calculate center position
-        center_x = left + face_width / 2
-        center_y = top + face_height / 2
+        center_x = x + w / 2
+        center_y = y + h / 2
         
         # Distance from ideal position (top-center to upper-third)
         ideal_x = width / 2
@@ -85,7 +123,7 @@ def score_faces(face_locations: list, image_shape: tuple) -> list:
         
         scored_faces.append({
             'index': idx,
-            'location': (top, right, bottom, left),
+            'location': (x, y, w, h),
             'area': int(face_area),
             'size_score': float(size_score),
             'pos_score': float(pos_score),
@@ -98,25 +136,41 @@ def score_faces(face_locations: list, image_shape: tuple) -> list:
     logger.info(f"Scored {len(scored_faces)} faces")
     return scored_faces
 
-def extract_face_region(image: np.ndarray, location: tuple, padding: int = 30) -> np.ndarray:
-    """Extract face region from image with padding."""
+def extract_face_region(image: np.ndarray, location: tuple, padding_percent: float = 0.3) -> np.ndarray:
+    """
+    Extract ONLY the face region from image with smart padding.
+    
+    Args:
+        image: Input image
+        location: (x, y, w, h) face rectangle
+        padding_percent: Percentage of face size to add as padding (0.3 = 30%)
+    """
     height, width = image.shape[:2]
-    top, right, bottom, left = location
+    x, y, w, h = location
     
-    # Add padding
-    top = max(0, top - padding)
-    left = max(0, left - padding)
-    bottom = min(height, bottom + padding)
-    right = min(width, right + padding)
+    # Calculate smart padding based on face size
+    padding_x = int(w * padding_percent)
+    padding_y = int(h * padding_percent)
     
-    # Extract region
-    face_image = image[top:bottom, left:right]
-    logger.info(f"Extracted face region: {face_image.shape}")
+    # Add padding but keep within image bounds
+    x1 = max(0, x - padding_x)
+    y1 = max(0, y - padding_y)
+    x2 = min(width, x + w + padding_x)
+    y2 = min(height, y + h + padding_y)
+    
+    # Extract ONLY the face region
+    face_image = image[y1:y2, x1:x2]
+    
+    # Apply slight sharpening for better quality
+    kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+    face_image = cv2.filter2D(face_image, -1, kernel)
+    
+    logger.info(f"Extracted CROPPED face: {face_image.shape}")
     return face_image
 
 def image_to_base64(image: np.ndarray) -> str:
     """Convert numpy image to base64 string."""
-    # Convert BGR to RGB if needed
+    # OpenCV uses BGR, convert to RGB for display
     if len(image.shape) == 3 and image.shape[2] == 3:
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     else:
@@ -139,17 +193,27 @@ async def root():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "service": "NSFAS Face Extraction API",
-        "version": "1.0.0"
+        "service": "NSFAS Face Extraction API - OpenCV",
+        "version": "2.0.0",
+        "detector": "OpenCV Haar Cascade"
     }
 
 @app.post("/extract-face")
 async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
     """
-    Extract face from uploaded ID document (image or PDF).
+    Extract ONLY the cropped face from uploaded ID document.
+    
+    Process Flow:
+    1. Upload PDF/Image → Server processes everything
+    2. PDF converted to high-quality image (if needed)
+    3. Face detection using OpenCV (server-side)
+    4. Extract and crop ONLY the face region
+    5. Return cropped face to UI
+    
+    All processing on SERVER - zero stress on client device!
     
     Returns:
-        - face_image: Base64 encoded extracted face
+        - face_image: Base64 encoded CROPPED face only
         - metadata: Detection and scoring information
     """
     try:
@@ -170,8 +234,6 @@ async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
             image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             if image is None:
                 raise HTTPException(status_code=400, detail="Invalid image file.")
-            # Convert BGR to RGB
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         else:
             raise HTTPException(
                 status_code=400, 
@@ -193,34 +255,33 @@ async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
             image_resized = image
             scale = 1.0
         
-        # Detect faces
-        face_locations = face_recognition.face_locations(image_resized, model='hog')
+        # Detect faces using OpenCV
+        faces = detect_faces_opencv(image_resized)
         
-        if len(face_locations) == 0:
+        if len(faces) == 0:
             raise HTTPException(
                 status_code=404, 
                 detail="No face detected in the document. Please upload a clearer ID photo."
             )
         
-        logger.info(f"Detected {len(face_locations)} face(s)")
-        
         # Score faces and select best one
-        scored_faces = score_faces(face_locations, image_resized.shape)
+        scored_faces = score_faces(faces, image_resized.shape)
         best_face = scored_faces[0]
         
         # Scale back to original image coordinates
         if scale != 1.0:
-            top, right, bottom, left = best_face['location']
-            top = int(top / scale)
-            right = int(right / scale)
-            bottom = int(bottom / scale)
-            left = int(left / scale)
-            original_location = (top, right, bottom, left)
+            x, y, w, h = best_face['location']
+            x = int(x / scale)
+            y = int(y / scale)
+            w = int(w / scale)
+            h = int(h / scale)
+            original_location = (x, y, w, h)
         else:
             original_location = best_face['location']
         
-        # Extract face from original resolution image
-        face_image = extract_face_region(image, original_location, padding=30)
+        # Extract ONLY the cropped face from original resolution image
+        # All processing done on server - no stress on client device
+        face_image = extract_face_region(image, original_location, padding_percent=0.3)
         
         # Convert to base64
         face_base64 = image_to_base64(face_image)
@@ -230,7 +291,7 @@ async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
         
         # Prepare metadata
         metadata = {
-            'total_faces': len(face_locations),
+            'total_faces': len(faces),
             'selected_index': best_face['index'],
             'confidence': round(best_face['combined_score'] * 100, 1),
             'face_size': {
@@ -240,6 +301,7 @@ async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
             'position_score': round(best_face['pos_score'] * 100, 1),
             'size_score': round(best_face['size_score'] * 100, 1),
             'combined_score': round(best_face['combined_score'] * 100, 1),
+            'detector': 'OpenCV Haar Cascade',
             'all_faces': [
                 {
                     'index': f['index'],
@@ -270,11 +332,11 @@ async def compare_faces(
     id_photo: UploadFile = File(...)
 ) -> JSONResponse:
     """
-    Compare two face images (selfie vs ID photo).
+    Compare two face images using OpenCV template matching.
     
     Returns:
         - match: Boolean indicating if faces match
-        - distance: Face distance (lower is better, <0.6 is a match)
+        - similarity: Similarity score (0-100)
         - confidence: Match confidence percentage
     """
     try:
@@ -292,42 +354,59 @@ async def compare_faces(
         if selfie_img is None or id_img is None:
             raise HTTPException(status_code=400, detail="Invalid image files.")
         
-        # Convert BGR to RGB
-        selfie_rgb = cv2.cvtColor(selfie_img, cv2.COLOR_BGR2RGB)
-        id_rgb = cv2.cvtColor(id_img, cv2.COLOR_BGR2RGB)
+        # Detect faces in both images
+        selfie_faces = detect_faces_opencv(selfie_img)
+        id_faces = detect_faces_opencv(id_img)
         
-        # Get face encodings
-        selfie_encodings = face_recognition.face_encodings(selfie_rgb)
-        id_encodings = face_recognition.face_encodings(id_rgb)
-        
-        if len(selfie_encodings) == 0:
+        if len(selfie_faces) == 0:
             raise HTTPException(status_code=404, detail="No face detected in selfie.")
         
-        if len(id_encodings) == 0:
+        if len(id_faces) == 0:
             raise HTTPException(status_code=404, detail="No face detected in ID photo.")
         
-        # Use first face from each image
-        selfie_encoding = selfie_encodings[0]
-        id_encoding = id_encodings[0]
+        # Extract first face from each
+        sx, sy, sw, sh = selfie_faces[0]
+        ix, iy, iw, ih = id_faces[0]
         
-        # Calculate face distance
-        distance = face_recognition.face_distance([id_encoding], selfie_encoding)[0]
+        selfie_face = selfie_img[sy:sy+sh, sx:sx+sw]
+        id_face = id_img[iy:iy+ih, ix:ix+iw]
         
-        # Determine match (threshold: 0.6)
-        threshold = 0.6
-        is_match = distance < threshold
+        # Resize to same size for comparison
+        target_size = (100, 100)
+        selfie_resized = cv2.resize(selfie_face, target_size)
+        id_resized = cv2.resize(id_face, target_size)
         
-        # Calculate confidence (inverse of distance, normalized)
-        confidence = max(0, min(100, (1 - distance) * 100))
+        # Convert to grayscale
+        selfie_gray = cv2.cvtColor(selfie_resized, cv2.COLOR_BGR2GRAY)
+        id_gray = cv2.cvtColor(id_resized, cv2.COLOR_BGR2GRAY)
         
-        logger.info(f"Face comparison - Distance: {distance:.4f}, Match: {is_match}")
+        # Calculate histogram similarity
+        selfie_hist = cv2.calcHist([selfie_gray], [0], None, [256], [0, 256])
+        id_hist = cv2.calcHist([id_gray], [0], None, [256], [0, 256])
+        
+        # Normalize histograms
+        cv2.normalize(selfie_hist, selfie_hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+        cv2.normalize(id_hist, id_hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
+        
+        # Compare histograms (correlation method)
+        similarity = cv2.compareHist(selfie_hist, id_hist, cv2.HISTCMP_CORREL)
+        
+        # Convert to percentage
+        similarity_percent = max(0, min(100, similarity * 100))
+        
+        # Match threshold (70%)
+        threshold = 0.7
+        is_match = similarity > threshold
+        
+        logger.info(f"Face comparison - Similarity: {similarity:.4f}, Match: {is_match}")
         
         return JSONResponse(content={
             'success': True,
             'match': bool(is_match),
-            'distance': float(distance),
-            'confidence': round(confidence, 1),
-            'threshold': threshold
+            'similarity': round(similarity_percent, 1),
+            'confidence': round(similarity_percent, 1),
+            'threshold': threshold * 100,
+            'method': 'OpenCV Histogram Correlation'
         })
         
     except HTTPException:
@@ -339,5 +418,3 @@ async def compare_faces(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=7860)
-
-

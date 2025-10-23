@@ -8,18 +8,20 @@ app_file: app.py
 pinned: false
 ---
 
-# NSFAS Face Extraction API
+# NSFAS Face Extraction API - OpenCV Edition
 
-A FastAPI service for extracting and analyzing faces from ID documents (images and PDFs).
+A FastAPI service for extracting and analyzing faces from ID documents (images and PDFs) using **OpenCV**.
 
 ## Features
 
 - ✅ Face detection from JPEG, PNG, and PDF files
 - ✅ Intelligent face selection (prioritizes larger, centered faces)
 - ✅ Face extraction with metadata
-- ✅ Face comparison between two images
+- ✅ Face comparison between two images  
 - ✅ CORS enabled for web applications
-- ✅ Fast and accurate using `face_recognition` library
+- ✅ **Fast and lightweight** using OpenCV Haar Cascade
+- ✅ No heavy dependencies (removed dlib/face_recognition)
+- ✅ Faster build and deployment times
 
 ## API Endpoints
 
@@ -56,6 +58,7 @@ Extracts the most prominent face from an ID document.
     "position_score": 78.3,
     "size_score": 92.1,
     "combined_score": 87.5,
+    "detector": "OpenCV Haar Cascade",
     "all_faces": [...]
   }
 }
@@ -79,9 +82,10 @@ Compares two face images (e.g., selfie vs ID photo).
 {
   "success": true,
   "match": true,
-  "distance": 0.42,
-  "confidence": 58.0,
-  "threshold": 0.6
+  "similarity": 78.5,
+  "confidence": 78.5,
+  "threshold": 70.0,
+  "method": "OpenCV Histogram Correlation"
 }
 ```
 
@@ -162,10 +166,18 @@ The API returns appropriate HTTP status codes:
 ## Technology Stack
 
 - **FastAPI**: Modern, fast web framework
-- **face_recognition**: Robust face detection and recognition
-- **OpenCV**: Image processing
+- **OpenCV**: Face detection using Haar Cascade classifier
 - **PyMuPDF**: PDF handling
 - **Pillow**: Image manipulation
+- **NumPy**: Numerical operations
+
+## Why OpenCV?
+
+- **Lightweight**: No heavy dependencies like dlib
+- **Fast**: Haar Cascade is optimized for speed
+- **Built-in**: Comes with pre-trained models
+- **Efficient**: Lower memory footprint
+- **Quick deployment**: Faster build times on HuggingFace
 
 ## License
 
