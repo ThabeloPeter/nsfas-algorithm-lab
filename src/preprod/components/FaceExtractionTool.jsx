@@ -14,9 +14,12 @@ export default function FaceExtractionTool() {
   const [error, setError] = useState(null);
   const [extractionData, setExtractionData] = useState(null);
   const [stream, setStream] = useState(null);
+  const [flashEnabled, setFlashEnabled] = useState(false);
+  const [lightingWarning, setLightingWarning] = useState(false);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const lightingCheckInterval = useRef(null);
 
   // Start camera
   const startCamera = async () => {
@@ -32,10 +35,94 @@ export default function FaceExtractionTool() {
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
+        
+        // Start checking lighting after video loads
+        videoRef.current.onloadedmetadata = () => {
+          startLightingCheck();
+        };
       }
     } catch (err) {
       console.error('Camera error:', err);
       setError('Unable to access camera. Please grant camera permissions.');
+    }
+  };
+
+  // Check lighting conditions
+  const checkLighting = () => {
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    
+    if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      
+      // Sample center area
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const sampleSize = 50;
+      
+      const imageData = ctx.getImageData(
+        centerX - sampleSize / 2,
+        centerY - sampleSize / 2,
+        sampleSize,
+        sampleSize
+      );
+      
+      // Calculate average brightness
+      let totalBrightness = 0;
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const r = imageData.data[i];
+        const g = imageData.data[i + 1];
+        const b = imageData.data[i + 2];
+        // Calculate perceived brightness
+        const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+        totalBrightness += brightness;
+      }
+      
+      const avgBrightness = totalBrightness / (sampleSize * sampleSize);
+      
+      // Warn if too dark (threshold: 70)
+      setLightingWarning(avgBrightness < 70);
+    }
+  };
+
+  // Start lighting check interval
+  const startLightingCheck = () => {
+    if (lightingCheckInterval.current) {
+      clearInterval(lightingCheckInterval.current);
+    }
+    lightingCheckInterval.current = setInterval(checkLighting, 1000);
+  };
+
+  // Stop lighting check
+  const stopLightingCheck = () => {
+    if (lightingCheckInterval.current) {
+      clearInterval(lightingCheckInterval.current);
+      lightingCheckInterval.current = null;
+    }
+  };
+
+  // Toggle flash
+  const toggleFlash = async () => {
+    if (stream) {
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track.getCapabilities();
+      
+      if (capabilities.torch) {
+        try {
+          await track.applyConstraints({
+            advanced: [{ torch: !flashEnabled }]
+          });
+          setFlashEnabled(!flashEnabled);
+        } catch (err) {
+          console.error('Flash error:', err);
+          setError('Unable to control flash on this device.');
+        }
+      } else {
+        setError('Flash not available on this device.');
+      }
     }
   };
 
@@ -45,6 +132,9 @@ export default function FaceExtractionTool() {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
+    stopLightingCheck();
+    setFlashEnabled(false);
+    setLightingWarning(false);
   };
 
   // Cleanup on unmount
@@ -251,39 +341,99 @@ export default function FaceExtractionTool() {
                 className="w-full h-auto"
               />
               
-              {/* Camera Guide Overlay */}
+              {/* Camera Guide Overlay - Different dimensions for each ID type */}
               <div className="absolute inset-0 pointer-events-none">
                 <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  {/* Guide rectangle */}
-                  <rect
-                    x="10" y="20" width="80" height="60"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.5)"
-                    strokeWidth="0.3"
-                    strokeDasharray="2,2"
-                  />
-                  {/* Corner markers */}
-                  <line x1="10" y1="20" x2="15" y2="20" stroke="white" strokeWidth="0.5" />
-                  <line x1="10" y1="20" x2="10" y2="25" stroke="white" strokeWidth="0.5" />
-                  
-                  <line x1="90" y1="20" x2="85" y2="20" stroke="white" strokeWidth="0.5" />
-                  <line x1="90" y1="20" x2="90" y2="25" stroke="white" strokeWidth="0.5" />
-                  
-                  <line x1="10" y1="80" x2="15" y2="80" stroke="white" strokeWidth="0.5" />
-                  <line x1="10" y1="80" x2="10" y2="75" stroke="white" strokeWidth="0.5" />
-                  
-                  <line x1="90" y1="80" x2="85" y2="80" stroke="white" strokeWidth="0.5" />
-                  <line x1="90" y1="80" x2="90" y2="75" stroke="white" strokeWidth="0.5" />
+                  {idType === 'smart' ? (
+                    // Smart ID Card - Horizontal card shape (85.6mm x 54mm ratio)
+                    <>
+                      <rect
+                        x="5" y="25" width="90" height="50"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.5)"
+                        strokeWidth="0.3"
+                        strokeDasharray="2,2"
+                      />
+                      {/* Corner markers */}
+                      <line x1="5" y1="25" x2="10" y2="25" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="25" x2="5" y2="30" stroke="white" strokeWidth="0.5" />
+                      
+                      <line x1="95" y1="25" x2="90" y2="25" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="25" x2="95" y2="30" stroke="white" strokeWidth="0.5" />
+                      
+                      <line x1="5" y1="75" x2="10" y2="75" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="75" x2="5" y2="70" stroke="white" strokeWidth="0.5" />
+                      
+                      <line x1="95" y1="75" x2="90" y2="75" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="75" x2="95" y2="70" stroke="white" strokeWidth="0.5" />
+                    </>
+                  ) : (
+                    // Green ID Book - Taller book page shape
+                    <>
+                      <rect
+                        x="15" y="10" width="70" height="80"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.5)"
+                        strokeWidth="0.3"
+                        strokeDasharray="2,2"
+                      />
+                      {/* Corner markers */}
+                      <line x1="15" y1="10" x2="20" y2="10" stroke="white" strokeWidth="0.5" />
+                      <line x1="15" y1="10" x2="15" y2="15" stroke="white" strokeWidth="0.5" />
+                      
+                      <line x1="85" y1="10" x2="80" y2="10" stroke="white" strokeWidth="0.5" />
+                      <line x1="85" y1="10" x2="85" y2="15" stroke="white" strokeWidth="0.5" />
+                      
+                      <line x1="15" y1="90" x2="20" y2="90" stroke="white" strokeWidth="0.5" />
+                      <line x1="15" y1="90" x2="15" y2="85" stroke="white" strokeWidth="0.5" />
+                      
+                      <line x1="85" y1="90" x2="80" y2="90" stroke="white" strokeWidth="0.5" />
+                      <line x1="85" y1="90" x2="85" y2="85" stroke="white" strokeWidth="0.5" />
+                    </>
+                  )}
                 </svg>
               </div>
 
-              {/* Instructions Overlay */}
-              <div className="absolute top-4 left-0 right-0 text-center">
-                <div className="inline-block bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full">
-                  <p className="text-xs text-white font-medium">
-                    {idType === 'smart' ? 'Align ID card within frame' : 'Align ID book page within frame'}
-                  </p>
+              {/* Instructions & Warnings Overlay */}
+              <div className="absolute top-4 left-0 right-0 px-4 space-y-2">
+                <div className="text-center">
+                  <div className="inline-block bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <p className="text-xs text-white font-medium">
+                      {idType === 'smart' ? 'Align ID card within frame' : 'Align ID book page within frame'}
+                    </p>
+                  </div>
                 </div>
+                
+                {/* Lighting Warning */}
+                {lightingWarning && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center"
+                  >
+                    <div className="inline-block bg-yellow-500/90 backdrop-blur-sm px-4 py-2 rounded-full">
+                      <p className="text-xs text-black font-semibold">
+                        ⚠️ Low light - Turn on flash or move to brighter area
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Flash Toggle Button */}
+              <div className="absolute bottom-4 right-4">
+                <button
+                  onClick={toggleFlash}
+                  className={`p-3 rounded-full backdrop-blur-sm transition-all ${
+                    flashEnabled 
+                      ? 'bg-yellow-500 text-black' 
+                      : 'bg-black/70 text-white hover:bg-black/80'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                  </svg>
+                </button>
               </div>
             </div>
 
