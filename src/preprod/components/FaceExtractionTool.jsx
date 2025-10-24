@@ -537,27 +537,27 @@ export default function FaceExtractionTool() {
               <div className="absolute inset-0 pointer-events-none">
                 <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                   {idType === 'smart' ? (
-                    // Smart ID Card - Horizontal card shape (85.6mm x 54mm ratio)
+                    // Smart ID Card - Horizontal card shape (reduced height)
                     <>
                       <rect
-                        x="5" y="25" width="90" height="50"
+                        x="5" y="30" width="90" height="40"
                         fill="none"
                         stroke="rgba(255,255,255,0.5)"
                         strokeWidth="0.3"
                         strokeDasharray="2,2"
                       />
                       {/* Corner markers */}
-                      <line x1="5" y1="25" x2="10" y2="25" stroke="white" strokeWidth="0.5" />
-                      <line x1="5" y1="25" x2="5" y2="30" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="30" x2="10" y2="30" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="30" x2="5" y2="35" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="95" y1="25" x2="90" y2="25" stroke="white" strokeWidth="0.5" />
-                      <line x1="95" y1="25" x2="95" y2="30" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="30" x2="90" y2="30" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="30" x2="95" y2="35" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="5" y1="75" x2="10" y2="75" stroke="white" strokeWidth="0.5" />
-                      <line x1="5" y1="75" x2="5" y2="70" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="70" x2="10" y2="70" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="70" x2="5" y2="65" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="95" y1="75" x2="90" y2="75" stroke="white" strokeWidth="0.5" />
-                      <line x1="95" y1="75" x2="95" y2="70" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="70" x2="90" y2="70" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="70" x2="95" y2="65" stroke="white" strokeWidth="0.5" />
                     </>
                   ) : (
                     // Green ID Book - Square shape
