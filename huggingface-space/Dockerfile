@@ -6,9 +6,10 @@ FROM animcogn/face_recognition:cpu
 WORKDIR /app
 
 # Install additional dependencies we need
+# Using compatible versions to avoid typing-extensions conflict
 RUN pip install --no-cache-dir \
-    fastapi==0.104.1 \
-    uvicorn[standard]==0.24.0 \
+    fastapi==0.100.0 \
+    uvicorn[standard]==0.23.0 \
     PyMuPDF==1.23.8 \
     python-multipart==0.0.6 \
     opencv-python-headless==4.8.1.78 \
