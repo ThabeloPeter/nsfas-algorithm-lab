@@ -64,7 +64,7 @@ def pdf_to_image(pdf_bytes: bytes) -> np.ndarray:
 
 def detect_faces_opencv(image: np.ndarray) -> List[Tuple[int, int, int, int]]:
     """
-    Detect faces using OpenCV Haar Cascade.
+    Detect faces using OpenCV Haar Cascade with STRICT filtering.
     Returns list of face rectangles as (x, y, w, h).
     """
     # Convert to grayscale for detection
@@ -73,22 +73,39 @@ def detect_faces_opencv(image: np.ndarray) -> List[Tuple[int, int, int, int]]:
     # Apply histogram equalization to improve detection
     gray = cv2.equalizeHist(gray)
     
-    # Detect faces
-    # Parameters: scaleFactor, minNeighbors, minSize
+    # Detect faces with STRICT parameters to avoid false positives
     faces = face_cascade.detectMultiScale(
         gray,
-        scaleFactor=1.1,      # How much image size is reduced at each scale
-        minNeighbors=5,       # How many neighbors each candidate rectangle should have
-        minSize=(50, 50),     # Minimum face size
+        scaleFactor=1.05,     # Smaller steps = more thorough detection (was 1.1)
+        minNeighbors=8,       # HIGHER = more strict, fewer false positives (was 5)
+        minSize=(80, 80),     # Larger minimum size (was 50x50)
         flags=cv2.CASCADE_SCALE_IMAGE
     )
     
-    logger.info(f"OpenCV detected {len(faces)} face(s)")
+    logger.info(f"OpenCV detected {len(faces)} face(s) with strict filtering")
+    
+    # Additional validation: Filter out faces that are too small relative to image
+    if len(faces) > 0:
+        height, width = image.shape[:2]
+        image_area = width * height
+        
+        valid_faces = []
+        for (x, y, w, h) in faces:
+            face_area = w * h
+            # Face must be at least 1% of image area (reject tiny detections like dots)
+            if face_area >= (image_area * 0.01):
+                valid_faces.append((x, y, w, h))
+            else:
+                logger.info(f"Rejected face: too small ({face_area} < {image_area * 0.01})")
+        
+        logger.info(f"Valid faces after size filtering: {len(valid_faces)}")
+        return np.array(valid_faces) if valid_faces else np.array([])
+    
     return faces
 
 def score_faces(faces: np.ndarray, image_shape: tuple) -> list:
     """
-    Score detected faces based on size and position.
+    Score detected faces based on size and position with QUALITY CHECKS.
     Prioritizes larger faces closer to the top-center (typical ID photo position).
     
     Args:
@@ -118,8 +135,22 @@ def score_faces(faces: np.ndarray, image_shape: tuple) -> list:
         # Size score (0-1, higher is better)
         size_score = face_area / (width * height)
         
+        # QUALITY CHECK: Face aspect ratio (should be roughly square or portrait)
+        aspect_ratio = w / h if h > 0 else 0
+        # Ideal face aspect ratio is between 0.7 (portrait) and 1.3 (slightly wide)
+        aspect_ratio_valid = 0.6 <= aspect_ratio <= 1.5
+        
         # Combined score (70% size, 30% position)
         combined_score = size_score * 0.7 + pos_score * 0.3
+        
+        # Confidence: Higher score = higher confidence
+        # Scale to percentage (multiply by 100)
+        confidence = min(100, combined_score * 150)  # Boost for better display
+        
+        # REJECT if confidence too low or bad aspect ratio
+        if confidence < 30 or not aspect_ratio_valid:
+            logger.info(f"Rejected face {idx}: confidence={confidence:.1f}%, aspect_ratio={aspect_ratio:.2f}")
+            continue
         
         scored_faces.append({
             'index': idx,
@@ -127,13 +158,15 @@ def score_faces(faces: np.ndarray, image_shape: tuple) -> list:
             'area': int(face_area),
             'size_score': float(size_score),
             'pos_score': float(pos_score),
-            'combined_score': float(combined_score)
+            'combined_score': float(combined_score),
+            'confidence': float(confidence),
+            'aspect_ratio': float(aspect_ratio)
         })
     
     # Sort by combined score (highest first)
     scored_faces.sort(key=lambda x: x['combined_score'], reverse=True)
     
-    logger.info(f"Scored {len(scored_faces)} faces")
+    logger.info(f"Scored {len(scored_faces)} valid faces (after quality checks)")
     return scored_faces
 
 def extract_face_region(image: np.ndarray, location: tuple, padding_percent: float = 0.3) -> np.ndarray:
@@ -255,18 +288,32 @@ async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
             image_resized = image
             scale = 1.0
         
-        # Detect faces using OpenCV
+        # Detect faces using OpenCV with strict filtering
         faces = detect_faces_opencv(image_resized)
         
         if len(faces) == 0:
             raise HTTPException(
                 status_code=404, 
-                detail="No face detected in the document. Please upload a clearer ID photo."
+                detail="No face detected in the document. Please ensure the ID photo is clearly visible and try again."
             )
         
-        # Score faces and select best one
+        # Score faces and select best one (with quality checks)
         scored_faces = score_faces(faces, image_resized.shape)
+        
+        if len(scored_faces) == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail="No valid face detected. The detected regions do not appear to be actual faces. Please ensure the ID photo is clearly visible."
+            )
+        
         best_face = scored_faces[0]
+        
+        # Final confidence check: Reject if too low
+        if best_face.get('confidence', 0) < 40:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Face detection confidence too low ({best_face.get('confidence', 0):.1f}%). Please capture a clearer image with better lighting."
+            )
         
         # Scale back to original image coordinates
         if scale != 1.0:
@@ -292,8 +339,9 @@ async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
         # Prepare metadata
         metadata = {
             'total_faces': len(faces),
+            'valid_faces': len(scored_faces),
             'selected_index': best_face['index'],
-            'confidence': round(best_face['combined_score'] * 100, 1),
+            'confidence': round(best_face.get('confidence', best_face['combined_score'] * 100), 1),
             'face_size': {
                 'width': face_width,
                 'height': face_height
@@ -301,12 +349,14 @@ async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
             'position_score': round(best_face['pos_score'] * 100, 1),
             'size_score': round(best_face['size_score'] * 100, 1),
             'combined_score': round(best_face['combined_score'] * 100, 1),
-            'detector': 'OpenCV Haar Cascade',
+            'aspect_ratio': round(best_face.get('aspect_ratio', 1.0), 2),
+            'detector': 'OpenCV Haar Cascade (Strict Mode)',
             'all_faces': [
                 {
                     'index': f['index'],
                     'area': f['area'],
-                    'score': round(f['combined_score'] * 100, 1)
+                    'score': round(f['combined_score'] * 100, 1),
+                    'confidence': round(f.get('confidence', f['combined_score'] * 100), 1)
                 }
                 for f in scored_faces
             ]
