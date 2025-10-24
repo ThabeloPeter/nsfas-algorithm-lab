@@ -16,10 +16,16 @@ export default function FaceExtractionTool() {
   const [stream, setStream] = useState(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [lightingWarning, setLightingWarning] = useState(false);
+  const [frameQuality, setFrameQuality] = useState(null); // Real-time frame analysis
+  const [feedback, setFeedback] = useState(''); // Progressive feedback message
+  const [countdown, setCountdown] = useState(null); // Auto-capture countdown
+  const [isAligned, setIsAligned] = useState(false); // Whether ID is properly aligned
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const lightingCheckInterval = useRef(null);
+  const frameAnalysisInterval = useRef(null);
+  const countdownTimer = useRef(null);
 
   // Start camera
   const startCamera = async () => {
@@ -36,9 +42,10 @@ export default function FaceExtractionTool() {
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
         
-        // Start checking lighting after video loads
+        // Start checking lighting and frame quality after video loads
         videoRef.current.onloadedmetadata = () => {
           startLightingCheck();
+          startFrameAnalysis();
         };
       }
     } catch (err) {
@@ -104,6 +111,166 @@ export default function FaceExtractionTool() {
     }
   };
 
+  // Haptic feedback (mobile)
+  const triggerHaptic = (type = 'light') => {
+    if (navigator.vibrate) {
+      if (type === 'success') {
+        navigator.vibrate([50, 100, 50]); // Success pattern
+      } else if (type === 'error') {
+        navigator.vibrate(200); // Error buzz
+      } else if (type === 'countdown') {
+        navigator.vibrate(30); // Quick tick
+      } else {
+        navigator.vibrate(50); // Light tap
+      }
+    }
+  };
+
+  // Analyze frame quality in real-time
+  const analyzeFrame = () => {
+    const video = videoRef.current;
+    if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const sampleSize = 100;
+
+    const imageData = ctx.getImageData(
+      centerX - sampleSize / 2,
+      centerY - sampleSize / 2,
+      sampleSize,
+      sampleSize
+    );
+
+    // Calculate brightness
+    let totalBrightness = 0;
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const r = imageData.data[i];
+      const g = imageData.data[i + 1];
+      const b = imageData.data[i + 2];
+      const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+      totalBrightness += brightness;
+    }
+    const avgBrightness = totalBrightness / (sampleSize * sampleSize);
+
+    // Calculate contrast/edges (simple proxy for alignment)
+    const grayData = [];
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      grayData.push(imageData.data[i]);
+    }
+    const variance = grayData.reduce((sum, val) => {
+      const diff = val - avgBrightness;
+      return sum + (diff * diff);
+    }, 0) / grayData.length;
+    const contrast = Math.sqrt(variance);
+
+    // Determine quality
+    const quality = {
+      brightness: avgBrightness,
+      contrast: contrast,
+      isTooDark: avgBrightness < 60,
+      isTooBright: avgBrightness > 200,
+      isBlurry: contrast < 20,
+      isWellLit: avgBrightness >= 80 && avgBrightness <= 180,
+      hasGoodContrast: contrast >= 30
+    };
+
+    setFrameQuality(quality);
+
+    // Progressive feedback
+    if (quality.isTooDark) {
+      setFeedback('💡 Too dark - turn on flash or add more light');
+      setIsAligned(false);
+    } else if (quality.isTooBright) {
+      setFeedback('☀️ Too bright - move away from direct light');
+      setIsAligned(false);
+    } else if (quality.isBlurry) {
+      setFeedback('📷 Hold steady - image is blurry');
+      setIsAligned(false);
+    } else if (quality.isWellLit && quality.hasGoodContrast) {
+      setFeedback('✓ Perfect! Hold steady...');
+      setIsAligned(true);
+    } else {
+      setFeedback('📸 Position ID in the frame');
+      setIsAligned(false);
+    }
+  };
+
+  // Start frame analysis
+  const startFrameAnalysis = () => {
+    if (frameAnalysisInterval.current) {
+      clearInterval(frameAnalysisInterval.current);
+    }
+    frameAnalysisInterval.current = setInterval(analyzeFrame, 500); // Check twice per second
+  };
+
+  // Stop frame analysis
+  const stopFrameAnalysis = () => {
+    if (frameAnalysisInterval.current) {
+      clearInterval(frameAnalysisInterval.current);
+      frameAnalysisInterval.current = null;
+    }
+    setFrameQuality(null);
+    setFeedback('');
+    setIsAligned(false);
+  };
+
+  // Start auto-capture countdown
+  const startCountdown = () => {
+    if (countdownTimer.current) return; // Already counting
+
+    setCountdown(3);
+    triggerHaptic('countdown');
+
+    countdownTimer.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev === null) return null;
+        
+        if (prev <= 1) {
+          clearInterval(countdownTimer.current);
+          countdownTimer.current = null;
+          capturePhoto();
+          return null;
+        }
+        
+        triggerHaptic('countdown');
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Cancel countdown
+  const cancelCountdown = () => {
+    if (countdownTimer.current) {
+      clearInterval(countdownTimer.current);
+      countdownTimer.current = null;
+    }
+    setCountdown(null);
+  };
+
+  // Auto-capture when aligned
+  useEffect(() => {
+    if (step === 'camera' && isAligned && !countdown) {
+      // Start countdown when conditions are perfect
+      const timer = setTimeout(() => {
+        if (isAligned) {
+          startCountdown();
+        }
+      }, 1000); // Wait 1 second of stability
+
+      return () => clearTimeout(timer);
+    } else if (!isAligned && countdown) {
+      // Cancel countdown if alignment lost
+      cancelCountdown();
+    }
+  }, [isAligned, countdown, step]);
+
   // Toggle flash
   const toggleFlash = async () => {
     if (stream) {
@@ -133,6 +300,8 @@ export default function FaceExtractionTool() {
       setStream(null);
     }
     stopLightingCheck();
+    stopFrameAnalysis();
+    cancelCountdown();
     setFlashEnabled(false);
     setLightingWarning(false);
   };
@@ -155,6 +324,8 @@ export default function FaceExtractionTool() {
     const canvas = canvasRef.current;
     
     if (video && canvas) {
+      triggerHaptic('success'); // Haptic feedback on capture
+      
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
@@ -208,6 +379,7 @@ export default function FaceExtractionTool() {
 
     } catch (err) {
       console.error('❌ Error:', err);
+      triggerHaptic('error'); // Haptic feedback on error
       setError(err.message || 'Face extraction failed. Please try again.');
       setStep('camera');
       setTimeout(startCamera, 100);
@@ -307,8 +479,8 @@ export default function FaceExtractionTool() {
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white mb-1">Smart ID Card</h3>
                   <p className="text-sm text-white/60 font-light">Card-style ID with photo on the front</p>
-                </div>
-              </div>
+                      </div>
+                    </div>
             </button>
 
             <button
@@ -322,8 +494,8 @@ export default function FaceExtractionTool() {
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white mb-1">Green ID Book</h3>
                   <p className="text-sm text-white/60 font-light">Book-style ID with photo on inside page</p>
+                  </div>
                 </div>
-              </div>
             </button>
           </motion.div>
         )}
@@ -397,31 +569,66 @@ export default function FaceExtractionTool() {
                 </svg>
               </div>
 
-              {/* Instructions & Warnings Overlay */}
-              <div className="absolute top-4 left-0 right-0 px-4 space-y-2">
-                <div className="text-center">
-                  <div className="inline-block bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <p className="text-xs text-white font-medium">
-                      {idType === 'smart' ? 'Align ID card within frame' : 'Align ID book page within frame'}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Lighting Warning */}
-                {lightingWarning && (
+              {/* Progressive Feedback Overlay */}
+              <div className="absolute top-4 left-0 right-0 px-4 space-y-2 z-30">
+                <AnimatePresence mode="wait">
+                  {feedback && (
+                    <motion.div
+                      key={feedback}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="text-center"
+                    >
+                      <div className={`inline-block backdrop-blur-sm px-4 py-2 rounded-full ${
+                        isAligned 
+                          ? 'bg-green-500/90' 
+                          : (feedback.includes('dark') || feedback.includes('bright') || feedback.includes('blurry'))
+                            ? 'bg-yellow-500/90'
+                            : 'bg-black/70'
+                      }`}>
+                        <p className={`text-xs font-semibold ${
+                          isAligned ? 'text-white' : 
+                          (feedback.includes('dark') || feedback.includes('bright') || feedback.includes('blurry'))
+                            ? 'text-black'
+                            : 'text-white'
+                        }`}>
+                          {feedback}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+            </div>
+
+              {/* Countdown Overlay */}
+              {countdown !== null && (
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 1.5, opacity: 0 }}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-40"
+                >
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-center"
+                    key={countdown}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 1.2, opacity: 0 }}
+                    className="text-9xl font-bold text-white drop-shadow-2xl"
                   >
-                    <div className="inline-block bg-yellow-500/90 backdrop-blur-sm px-4 py-2 rounded-full">
-                      <p className="text-xs text-black font-semibold">
-                        ⚠️ Low light - Turn on flash or move to brighter area
-                      </p>
-                    </div>
+                    {countdown}
                   </motion.div>
-                )}
-              </div>
+                </motion.div>
+              )}
+
+              {/* Alignment Indicator */}
+              {isAligned && !countdown && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute inset-0 border-4 border-green-500 rounded-2xl pointer-events-none z-20"
+                />
+              )}
 
               {/* Flash Toggle Button */}
               <div className="absolute bottom-4 right-4">
@@ -442,13 +649,24 @@ export default function FaceExtractionTool() {
 
             {/* Capture Button */}
             <div className="flex space-x-3">
-              <button
-                onClick={capturePhoto}
-                className="flex-1 bg-white text-black py-4 rounded-xl font-semibold hover:bg-white/90 transition-all flex items-center justify-center space-x-2"
-              >
-                <Camera className="w-5 h-5" />
-                <span>Capture Photo</span>
-              </button>
+              {countdown !== null ? (
+                <button
+                  onClick={cancelCountdown}
+                  className="flex-1 bg-red-500 text-white py-4 rounded-xl font-semibold hover:bg-red-600 transition-all flex items-center justify-center space-x-2"
+                >
+                  <AlertCircle className="w-5 h-5" />
+                  <span>Cancel Auto-Capture</span>
+                </button>
+              ) : (
+                <button
+                  onClick={capturePhoto}
+                  disabled={!stream}
+                  className="flex-1 bg-white text-black py-4 rounded-xl font-semibold hover:bg-white/90 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span>Capture Now</span>
+                </button>
+              )}
               <button
                 onClick={handleReset}
                 className="px-6 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all"
@@ -459,12 +677,12 @@ export default function FaceExtractionTool() {
 
             {/* Tips */}
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-              <p className="text-xs text-blue-300 font-semibold mb-2">📸 Tips for best results:</p>
+              <p className="text-xs text-blue-300 font-semibold mb-2">✨ Smart Capture Features:</p>
               <ul className="text-xs text-blue-200/80 space-y-1 font-light">
-                <li>• Ensure good lighting</li>
-                <li>• Hold camera steady</li>
-                <li>• Align ID within the guide frame</li>
-                <li>• Make sure photo is visible and clear</li>
+                <li>• <strong>Auto-Capture:</strong> Aligns perfectly? We'll capture automatically!</li>
+                <li>• <strong>Real-time Guidance:</strong> Follow on-screen instructions</li>
+                <li>• <strong>Quality Check:</strong> We ensure optimal lighting & focus</li>
+                <li>• <strong>Manual Override:</strong> Tap "Capture Now" anytime</li>
               </ul>
             </div>
           </motion.div>
@@ -497,27 +715,27 @@ export default function FaceExtractionTool() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-white">Extracted Face</h3>
                 <CheckCircle className="w-5 h-5 text-green-400" />
-              </div>
-              
+                </div>
+
               <div className="relative aspect-square max-w-xs mx-auto bg-white/5 rounded-xl border border-white/20 overflow-hidden mb-4">
-                <img
-                  src={extractedFaceUrl}
-                  alt="Extracted face"
-                  className="w-full h-full object-cover"
-                />
+                    <img
+                      src={extractedFaceUrl}
+                      alt="Extracted face"
+                      className="w-full h-full object-cover"
+                    />
+                    </div>
+
+                    <button
+                      onClick={handleDownload}
+                className="w-full py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-all font-medium text-sm flex items-center justify-center space-x-2"
+                    >
+                      <Download className="w-4 h-4" />
+                <span>Download Face</span>
+                    </button>
               </div>
 
-              <button
-                onClick={handleDownload}
-                className="w-full py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-all font-medium text-sm flex items-center justify-center space-x-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Face</span>
-              </button>
-            </div>
-
-            {/* Stats */}
-            {extractionData && (
+              {/* Stats */}
+              {extractionData && (
               <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
                 <h4 className="text-sm font-semibold text-white mb-4">Extraction Details</h4>
                 
@@ -525,12 +743,12 @@ export default function FaceExtractionTool() {
                   <div className="bg-white/5 p-3 rounded-lg">
                     <p className="text-xs text-white/50 mb-1">Faces Detected</p>
                     <p className="text-xl font-semibold text-white">{extractionData.totalFaces}</p>
-                  </div>
+                    </div>
                   <div className="bg-white/5 p-3 rounded-lg">
                     <p className="text-xs text-white/50 mb-1">Confidence</p>
                     <p className="text-xl font-semibold text-white">{extractionData.confidence}%</p>
+                    </div>
                   </div>
-                </div>
 
                 <div className="bg-white/5 p-3 rounded-lg text-xs">
                   <p className="text-white/50 mb-2">Selection Score</p>
@@ -538,26 +756,26 @@ export default function FaceExtractionTool() {
                     <div className="flex justify-between">
                       <span className="text-white/60">Size Score:</span>
                       <span className="text-white font-semibold">{extractionData.sizeScore}%</span>
-                    </div>
+                      </div>
                     <div className="flex justify-between">
                       <span className="text-white/60">Position Score:</span>
                       <span className="text-white font-semibold">{extractionData.positionScore}%</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Actions */}
-            <button
-              onClick={handleReset}
+              {/* Actions */}
+                <button
+                  onClick={handleReset}
               className="w-full py-4 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
-            >
-              <RefreshCw className="w-4 h-4" />
+                >
+                  <RefreshCw className="w-4 h-4" />
               <span>Capture Another ID</span>
-            </button>
+                </button>
           </motion.div>
-        )}
+          )}
 
         {/* Hidden canvas for capture */}
         <canvas ref={canvasRef} className="hidden" />
