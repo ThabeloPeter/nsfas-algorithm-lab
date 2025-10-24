@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import cv2
@@ -62,31 +62,73 @@ def pdf_to_image(pdf_bytes: bytes) -> np.ndarray:
         logger.error(f"PDF conversion error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to convert PDF: {str(e)}")
 
-def detect_faces_opencv(image: np.ndarray) -> List[Tuple[int, int, int, int]]:
+def detect_faces_opencv(image: np.ndarray, id_type: str = 'full') -> List[Tuple[int, int, int, int]]:
     """
-    Detect faces using OpenCV Haar Cascade with STRICT filtering.
-    Returns list of face rectangles as (x, y, w, h).
+    Detect faces using OpenCV Haar Cascade with STRICT filtering and ROI optimization.
+    
+    Args:
+        image: Input image
+        id_type: 'smart' for Smart ID (focus right side), 'green' for Green ID, 'full' for entire image
+    
+    Returns:
+        List of face rectangles as (x, y, w, h) in FULL image coordinates
     """
-    # Convert to grayscale for detection
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    height, width = image.shape[:2]
+    
+    # Define Region of Interest (ROI) based on ID type
+    if id_type == 'smart':
+        # Smart ID Card: Photo is on RIGHT side (approximately right 45%)
+        roi_x_start = int(width * 0.55)  # Start at 55% from left
+        roi_x_end = width
+        roi_y_start = 0
+        roi_y_end = height
+        logger.info(f"Smart ID detected - Focusing on RIGHT side: x={roi_x_start}-{roi_x_end}")
+    elif id_type == 'green':
+        # Green ID Book: Photo typically in upper-center area
+        roi_x_start = int(width * 0.2)   # 20% from left
+        roi_x_end = int(width * 0.8)     # 80% from left (center 60%)
+        roi_y_start = 0
+        roi_y_end = int(height * 0.7)    # Top 70%
+        logger.info(f"Green ID detected - Focusing on upper-center area")
+    else:
+        # Full image scan
+        roi_x_start = 0
+        roi_x_end = width
+        roi_y_start = 0
+        roi_y_end = height
+        logger.info(f"Scanning full image")
+    
+    # Extract ROI
+    roi = image[roi_y_start:roi_y_end, roi_x_start:roi_x_end]
+    
+    # Convert ROI to grayscale for detection
+    gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     
     # Apply histogram equalization to improve detection
-    gray = cv2.equalizeHist(gray)
+    gray_roi = cv2.equalizeHist(gray_roi)
     
-    # Detect faces with STRICT parameters to avoid false positives
-    faces = face_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.05,     # Smaller steps = more thorough detection (was 1.1)
-        minNeighbors=8,       # HIGHER = more strict, fewer false positives (was 5)
-        minSize=(80, 80),     # Larger minimum size (was 50x50)
+    # Detect faces in ROI with STRICT parameters to avoid false positives
+    faces_in_roi = face_cascade.detectMultiScale(
+        gray_roi,
+        scaleFactor=1.05,     # Smaller steps = more thorough detection
+        minNeighbors=8,       # HIGHER = more strict, fewer false positives
+        minSize=(80, 80),     # Larger minimum size
         flags=cv2.CASCADE_SCALE_IMAGE
     )
     
-    logger.info(f"OpenCV detected {len(faces)} face(s) with strict filtering")
+    logger.info(f"OpenCV detected {len(faces_in_roi)} face(s) in ROI with strict filtering")
+    
+    # Convert ROI coordinates back to full image coordinates
+    faces = []
+    if len(faces_in_roi) > 0:
+        for (x, y, w, h) in faces_in_roi:
+            # Adjust coordinates relative to full image
+            full_x = x + roi_x_start
+            full_y = y + roi_y_start
+            faces.append((full_x, full_y, w, h))
     
     # Additional validation: Filter out faces that are too small relative to image
     if len(faces) > 0:
-        height, width = image.shape[:2]
         image_area = width * height
         
         valid_faces = []
@@ -101,7 +143,7 @@ def detect_faces_opencv(image: np.ndarray) -> List[Tuple[int, int, int, int]]:
         logger.info(f"Valid faces after size filtering: {len(valid_faces)}")
         return np.array(valid_faces) if valid_faces else np.array([])
     
-    return faces
+    return np.array(faces)
 
 def score_faces(faces: np.ndarray, image_shape: tuple) -> list:
     """
@@ -232,18 +274,30 @@ async def root():
     }
 
 @app.post("/extract-face")
-async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
+async def extract_face(
+    file: UploadFile = File(...),
+    id_type: str = Form('full')
+) -> JSONResponse:
     """
     Extract ONLY the cropped face from uploaded ID document.
     
     Process Flow:
     1. Upload PDF/Image → Server processes everything
     2. PDF converted to high-quality image (if needed)
-    3. Face detection using OpenCV (server-side)
+    3. Face detection using OpenCV with ROI optimization (server-side)
     4. Extract and crop ONLY the face region
     5. Return cropped face to UI
     
+    ROI Optimization:
+    - Smart ID: Scans RIGHT 45% (where photo is located)
+    - Green ID: Scans upper-center 60% (typical photo location)
+    - Full: Scans entire image
+    
     All processing on SERVER - zero stress on client device!
+    
+    Args:
+        file: ID document (image or PDF)
+        id_type: 'smart', 'green', or 'full' for ROI optimization
     
     Returns:
         - face_image: Base64 encoded CROPPED face only
@@ -288,8 +342,8 @@ async def extract_face(file: UploadFile = File(...)) -> JSONResponse:
             image_resized = image
             scale = 1.0
         
-        # Detect faces using OpenCV with strict filtering
-        faces = detect_faces_opencv(image_resized)
+        # Detect faces using OpenCV with strict filtering and ROI optimization
+        faces = detect_faces_opencv(image_resized, id_type=id_type)
         
         if len(faces) == 0:
             raise HTTPException(

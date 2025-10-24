@@ -179,10 +179,13 @@ export default function FaceExtractionTool() {
 
     try {
       console.log('🚀 Calling face extraction API...');
+      console.log('📋 ID Type:', idType);
       
       // Create file from blob
       const file = new File([imageBlob], 'id-photo.jpg', { type: 'image/jpeg' });
-      const result = await extractFaceFromDocument(file);
+      
+      // Pass ID type to API for ROI optimization
+      const result = await extractFaceFromDocument(file, idType);
 
       if (!result.success) {
         throw new Error('Face extraction failed');

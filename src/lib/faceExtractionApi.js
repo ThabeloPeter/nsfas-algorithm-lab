@@ -32,9 +32,10 @@ const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUT_MS) => {
 /**
  * Extract face from an ID document (image or PDF)
  * @param {File} file - The ID document file to process
+ * @param {string} idType - 'smart', 'green', or 'full' for ROI optimization
  * @returns {Promise<Object>} Extracted face data and metadata
  */
-export const extractFaceFromDocument = async (file) => {
+export const extractFaceFromDocument = async (file, idType = 'full') => {
   try {
     // Validate file
     if (!file) {
@@ -54,9 +55,11 @@ export const extractFaceFromDocument = async (file) => {
     // Create form data
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('id_type', idType);
 
     console.log('🚀 Sending request to face extraction API...');
     console.log('📁 File:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
+    console.log('🎯 ID Type:', idType);
 
     // Make API request
     const response = await fetchWithTimeout(`${API_URL}/extract-face`, {
