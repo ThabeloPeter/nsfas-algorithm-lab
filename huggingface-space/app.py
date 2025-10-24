@@ -102,12 +102,12 @@ def assess_image_quality(image: np.ndarray) -> Dict[str, Any]:
     
     return {
         'blur_score': float(blur_score),
-        'is_blurry': is_blurry,
+        'is_blurry': bool(is_blurry),
         'brightness': float(mean_brightness),
-        'is_too_dark': is_too_dark,
-        'is_too_bright': is_too_bright,
+        'is_too_dark': bool(is_too_dark),
+        'is_too_bright': bool(is_too_bright),
         'contrast': float(contrast),
-        'is_low_contrast': is_low_contrast,
+        'is_low_contrast': bool(is_low_contrast),
         'quality': quality_status,
         'issues': issues
     }
