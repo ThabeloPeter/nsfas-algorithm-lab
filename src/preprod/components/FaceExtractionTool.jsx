@@ -434,7 +434,14 @@ export default function FaceExtractionTool() {
     canvas.height = video.videoHeight;
     
     const ctx = canvas.getContext('2d');
+    
+    // Flip horizontally to remove mirror effect
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0);
+    
+    // Reset transform
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     
     canvas.toBlob((blob) => {
       if (!blob) return;
@@ -978,10 +985,11 @@ export default function FaceExtractionTool() {
                   ? "absolute inset-0 w-full h-full object-cover" 
                   : "w-full h-auto"
                 }
+                style={{ transform: 'scaleX(-1)' }}
               />
               
               {/* Oval Face Guide for Selfie */}
-              <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 pointer-events-none" style={{ transform: 'scaleX(-1)' }}>
                 <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <ellipse 
                     cx="50" 
