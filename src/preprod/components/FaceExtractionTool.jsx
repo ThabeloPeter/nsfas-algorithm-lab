@@ -560,27 +560,27 @@ export default function FaceExtractionTool() {
                       <line x1="95" y1="75" x2="95" y2="70" stroke="white" strokeWidth="0.5" />
                     </>
                   ) : (
-                    // Green ID Book - Taller book page shape
+                    // Green ID Book - Square shape
                     <>
                       <rect
-                        x="15" y="10" width="70" height="80"
+                        x="10" y="10" width="80" height="80"
                         fill="none"
                         stroke="rgba(255,255,255,0.5)"
                         strokeWidth="0.3"
                         strokeDasharray="2,2"
                       />
                       {/* Corner markers */}
-                      <line x1="15" y1="10" x2="20" y2="10" stroke="white" strokeWidth="0.5" />
-                      <line x1="15" y1="10" x2="15" y2="15" stroke="white" strokeWidth="0.5" />
+                      <line x1="10" y1="10" x2="15" y2="10" stroke="white" strokeWidth="0.5" />
+                      <line x1="10" y1="10" x2="10" y2="15" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="85" y1="10" x2="80" y2="10" stroke="white" strokeWidth="0.5" />
-                      <line x1="85" y1="10" x2="85" y2="15" stroke="white" strokeWidth="0.5" />
+                      <line x1="90" y1="10" x2="85" y2="10" stroke="white" strokeWidth="0.5" />
+                      <line x1="90" y1="10" x2="90" y2="15" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="15" y1="90" x2="20" y2="90" stroke="white" strokeWidth="0.5" />
-                      <line x1="15" y1="90" x2="15" y2="85" stroke="white" strokeWidth="0.5" />
+                      <line x1="10" y1="90" x2="15" y2="90" stroke="white" strokeWidth="0.5" />
+                      <line x1="10" y1="90" x2="10" y2="85" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="85" y1="90" x2="80" y2="90" stroke="white" strokeWidth="0.5" />
-                      <line x1="85" y1="90" x2="85" y2="85" stroke="white" strokeWidth="0.5" />
+                      <line x1="90" y1="90" x2="85" y2="90" stroke="white" strokeWidth="0.5" />
+                      <line x1="90" y1="90" x2="90" y2="85" stroke="white" strokeWidth="0.5" />
                     </>
                   )}
                 </svg>
