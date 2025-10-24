@@ -284,23 +284,42 @@ export default function FaceExtractionTool() {
 
   // Toggle flash
   const toggleFlash = async () => {
-    if (stream) {
+    if (!stream) {
+      console.log('❌ No camera stream available');
+      return;
+    }
+
+    try {
       const track = stream.getVideoTracks()[0];
       const capabilities = track.getCapabilities();
       
+      console.log('📸 Camera capabilities:', capabilities);
+      console.log('🔦 Torch supported:', !!capabilities.torch);
+      
       if (capabilities.torch) {
         try {
+          const newFlashState = !flashEnabled;
+          console.log(`🔦 Attempting to ${newFlashState ? 'enable' : 'disable'} flash...`);
+          
           await track.applyConstraints({
-            advanced: [{ torch: !flashEnabled }]
+            advanced: [{ torch: newFlashState }]
           });
-          setFlashEnabled(!flashEnabled);
+          
+          setFlashEnabled(newFlashState);
+          triggerHaptic('light');
+          console.log(`✅ Flash ${newFlashState ? 'enabled' : 'disabled'}`);
+          
         } catch (err) {
-          console.error('Flash error:', err);
-          setError('Unable to control flash on this device.');
+          console.error('❌ Flash constraint error:', err);
+          setError(`Flash error: ${err.message || 'Unable to control flash'}`);
         }
       } else {
-        setError('Flash not available on this device.');
+        console.log('❌ Torch not supported on this device/browser');
+        setError('Flash not available. Requirements: Mobile device with back camera on HTTPS.');
       }
+    } catch (err) {
+      console.error('❌ Flash capability check error:', err);
+      setError('Unable to access camera capabilities.');
     }
   };
 
