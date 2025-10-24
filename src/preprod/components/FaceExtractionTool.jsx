@@ -18,7 +18,6 @@ export default function FaceExtractionTool() {
   const [lightingWarning, setLightingWarning] = useState(false);
   const [frameQuality, setFrameQuality] = useState(null); // Real-time frame analysis
   const [feedback, setFeedback] = useState(''); // Progressive feedback message
-  const [countdown, setCountdown] = useState(null); // Auto-capture countdown
   const [isAligned, setIsAligned] = useState(false); // Whether ID is properly aligned
   const [isMobile, setIsMobile] = useState(false); // Mobile device detection
   
@@ -26,7 +25,6 @@ export default function FaceExtractionTool() {
   const canvasRef = useRef(null);
   const lightingCheckInterval = useRef(null);
   const frameAnalysisInterval = useRef(null);
-  const countdownTimer = useRef(null);
 
   // Detect mobile device
   useEffect(() => {
@@ -232,55 +230,6 @@ export default function FaceExtractionTool() {
     setIsAligned(false);
   };
 
-  // Start auto-capture countdown
-  const startCountdown = () => {
-    if (countdownTimer.current) return; // Already counting
-
-    setCountdown(3);
-    triggerHaptic('countdown');
-
-    countdownTimer.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev === null) return null;
-        
-        if (prev <= 1) {
-          clearInterval(countdownTimer.current);
-          countdownTimer.current = null;
-          capturePhoto();
-          return null;
-        }
-        
-        triggerHaptic('countdown');
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  // Cancel countdown
-  const cancelCountdown = () => {
-    if (countdownTimer.current) {
-      clearInterval(countdownTimer.current);
-      countdownTimer.current = null;
-    }
-    setCountdown(null);
-  };
-
-  // Auto-capture when aligned
-  useEffect(() => {
-    if (step === 'camera' && isAligned && !countdown) {
-      // Start countdown when conditions are perfect
-      const timer = setTimeout(() => {
-        if (isAligned) {
-          startCountdown();
-        }
-      }, 1000); // Wait 1 second of stability
-
-      return () => clearTimeout(timer);
-    } else if (!isAligned && countdown) {
-      // Cancel countdown if alignment lost
-      cancelCountdown();
-    }
-  }, [isAligned, countdown, step]);
 
   // Toggle flash
   const toggleFlash = async () => {
@@ -331,7 +280,6 @@ export default function FaceExtractionTool() {
     }
     stopLightingCheck();
     stopFrameAnalysis();
-    cancelCountdown();
     setFlashEnabled(false);
     setLightingWarning(false);
   };
@@ -637,28 +585,8 @@ export default function FaceExtractionTool() {
                 </AnimatePresence>
             </div>
 
-              {/* Countdown Overlay */}
-              {countdown !== null && (
-                <motion.div
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 1.5, opacity: 0 }}
-                  className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-40"
-                >
-                  <motion.div
-                    key={countdown}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 1.2, opacity: 0 }}
-                    className="text-9xl font-bold text-white drop-shadow-2xl"
-                  >
-                    {countdown}
-                  </motion.div>
-                </motion.div>
-              )}
-
               {/* Alignment Indicator */}
-              {isAligned && !countdown && (
+              {isAligned && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -705,24 +633,14 @@ export default function FaceExtractionTool() {
               ? "fixed bottom-4 left-4 right-4 z-50 flex space-x-3"
               : "flex space-x-3"
             }>
-              {countdown !== null ? (
-                <button
-                  onClick={cancelCountdown}
-                  className="flex-1 bg-red-500 text-white py-4 rounded-xl font-semibold hover:bg-red-600 transition-all flex items-center justify-center space-x-2"
-                >
-                  <AlertCircle className="w-5 h-5" />
-                  <span>Cancel Auto-Capture</span>
-                </button>
-              ) : (
-                <button
-                  onClick={capturePhoto}
-                  disabled={!stream}
-                  className="flex-1 bg-white text-black py-4 rounded-xl font-semibold hover:bg-white/90 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Camera className="w-5 h-5" />
-                  <span>Capture Now</span>
-                </button>
-              )}
+              <button
+                onClick={capturePhoto}
+                disabled={!stream}
+                className="flex-1 bg-white text-black py-4 rounded-xl font-semibold hover:bg-white/90 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Camera className="w-5 h-5" />
+                <span>Capture Photo</span>
+              </button>
               {!isMobile && (
                 <button
                   onClick={handleReset}
@@ -736,12 +654,12 @@ export default function FaceExtractionTool() {
             {/* Tips */}
             {!isMobile && (
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-                <p className="text-xs text-blue-300 font-semibold mb-2">✨ Smart Capture Features:</p>
+                <p className="text-xs text-blue-300 font-semibold mb-2">📸 Tips for best results:</p>
                 <ul className="text-xs text-blue-200/80 space-y-1 font-light">
-                  <li>• <strong>Auto-Capture:</strong> Aligns perfectly? We'll capture automatically!</li>
                   <li>• <strong>Real-time Guidance:</strong> Follow on-screen instructions</li>
-                  <li>• <strong>Quality Check:</strong> We ensure optimal lighting & focus</li>
-                  <li>• <strong>Manual Override:</strong> Tap "Capture Now" anytime</li>
+                  <li>• <strong>Quality Check:</strong> We analyze lighting & focus</li>
+                  <li>• <strong>Alignment:</strong> Green border shows when aligned</li>
+                  <li>• <strong>Ready to Capture:</strong> Tap "Capture Photo" when ready</li>
                 </ul>
               </div>
             )}
