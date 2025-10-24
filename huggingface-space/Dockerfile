@@ -11,7 +11,10 @@ RUN pip install --no-cache-dir \
     uvicorn[standard]==0.24.0 \
     PyMuPDF==1.23.8 \
     python-multipart==0.0.6 \
-    opencv-python-headless==4.8.1.78
+    opencv-python-headless==4.8.1.78 \
+    mtcnn==0.1.1 \
+    tensorflow-cpu==2.13.0 \
+    keras==2.13.1
 
 # Copy application code
 COPY app.py .
