@@ -62,9 +62,31 @@ def pdf_to_image(pdf_bytes: bytes) -> np.ndarray:
         logger.error(f"PDF conversion error: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to convert PDF: {str(e)}")
 
+def preprocess_for_detection(gray_image: np.ndarray) -> np.ndarray:
+    """
+    Preprocess grayscale image to handle various lighting conditions.
+    Works for both too bright (overexposed) and too dark images.
+    """
+    # 1. Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    # Better than regular histogram equalization - handles local lighting variations
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray_image)
+    
+    # 2. Denoise while preserving edges
+    # Reduces noise from camera/lighting without blurring faces
+    denoised = cv2.fastNlMeansDenoising(enhanced, None, h=10, templateWindowSize=7, searchWindowSize=21)
+    
+    # 3. Normalize contrast
+    # Ensures consistent brightness range regardless of lighting
+    normalized = cv2.normalize(denoised, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+    
+    logger.info("Image preprocessed: CLAHE + denoising + normalization applied")
+    return normalized
+
 def detect_faces_opencv(image: np.ndarray, id_type: str = 'full') -> List[Tuple[int, int, int, int]]:
     """
-    Detect faces using OpenCV Haar Cascade with STRICT filtering and ROI optimization.
+    Detect faces using OpenCV Haar Cascade with ROBUST preprocessing and ROI optimization.
+    Handles all lighting conditions: too bright, too dark, uneven lighting.
     
     Args:
         image: Input image
@@ -78,17 +100,17 @@ def detect_faces_opencv(image: np.ndarray, id_type: str = 'full') -> List[Tuple[
     # Define Region of Interest (ROI) based on ID type
     if id_type == 'smart':
         # Smart ID Card: Photo is on RIGHT side (right 50% to be safe)
-        roi_x_start = int(width * 0.50)  # Start at 50% from left (was 55%)
+        roi_x_start = int(width * 0.50)  # Start at 50% from left
         roi_x_end = width
         roi_y_start = 0
         roi_y_end = height
         logger.info(f"Smart ID detected - Focusing on RIGHT side: x={roi_x_start}-{roi_x_end}")
     elif id_type == 'green':
         # Green ID Book: Photo typically in upper-center area
-        roi_x_start = int(width * 0.15)  # 15% from left (was 20%)
-        roi_x_end = int(width * 0.85)    # 85% from left (was 80%)
+        roi_x_start = int(width * 0.15)  # 15% from left
+        roi_x_end = int(width * 0.85)    # 85% from left
         roi_y_start = 0
-        roi_y_end = int(height * 0.75)   # Top 75% (was 70%)
+        roi_y_end = int(height * 0.75)   # Top 75%
         logger.info(f"Green ID detected - Focusing on upper-center area")
     else:
         # Full image scan
@@ -104,19 +126,19 @@ def detect_faces_opencv(image: np.ndarray, id_type: str = 'full') -> List[Tuple[
     # Convert ROI to grayscale for detection
     gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     
-    # Apply histogram equalization to improve detection
-    gray_roi = cv2.equalizeHist(gray_roi)
+    # ROBUST PREPROCESSING - Handles ALL lighting conditions
+    preprocessed_roi = preprocess_for_detection(gray_roi)
     
-    # Detect faces in ROI with BALANCED parameters
+    # Detect faces in preprocessed ROI with BALANCED parameters
     faces_in_roi = face_cascade.detectMultiScale(
-        gray_roi,
+        preprocessed_roi,
         scaleFactor=1.05,     # Smaller steps = more thorough detection
-        minNeighbors=6,       # BALANCED (was 8, too strict; was 5, too loose)
-        minSize=(60, 60),     # Reasonable minimum (was 80x80, too strict)
+        minNeighbors=5,       # Slightly more lenient (was 6)
+        minSize=(50, 50),     # Even smaller minimum (was 60x60)
         flags=cv2.CASCADE_SCALE_IMAGE
     )
     
-    logger.info(f"OpenCV detected {len(faces_in_roi)} face(s) in ROI with strict filtering")
+    logger.info(f"OpenCV detected {len(faces_in_roi)} face(s) in preprocessed ROI")
     
     # Convert ROI coordinates back to full image coordinates
     faces = []
@@ -191,7 +213,7 @@ def score_faces(faces: np.ndarray, image_shape: tuple) -> list:
         confidence = min(100, combined_score * 150)  # Boost for better display
         
         # REJECT if confidence too low or bad aspect ratio
-        if confidence < 25 or not aspect_ratio_valid:  # Lowered from 30 to 25
+        if confidence < 20 or not aspect_ratio_valid:  # Lowered to 20 with better preprocessing
             logger.info(f"Rejected face {idx}: confidence={confidence:.1f}%, aspect_ratio={aspect_ratio:.2f}")
             continue
         
@@ -364,10 +386,10 @@ async def extract_face(
         best_face = scored_faces[0]
         
         # Final confidence check: Reject if too low
-        if best_face.get('confidence', 0) < 30:  # Lowered from 40 to 30
+        if best_face.get('confidence', 0) < 25:  # Lowered to 25 with robust preprocessing
             raise HTTPException(
                 status_code=404,
-                detail=f"Face detection confidence too low ({best_face.get('confidence', 0):.1f}%). Please capture a clearer image with better lighting."
+                detail=f"Face detection confidence too low ({best_face.get('confidence', 0):.1f}%). Please try repositioning the ID or adjusting lighting."
             )
         
         # Scale back to original image coordinates
