@@ -77,18 +77,18 @@ def detect_faces_opencv(image: np.ndarray, id_type: str = 'full') -> List[Tuple[
     
     # Define Region of Interest (ROI) based on ID type
     if id_type == 'smart':
-        # Smart ID Card: Photo is on RIGHT side (approximately right 45%)
-        roi_x_start = int(width * 0.55)  # Start at 55% from left
+        # Smart ID Card: Photo is on RIGHT side (right 50% to be safe)
+        roi_x_start = int(width * 0.50)  # Start at 50% from left (was 55%)
         roi_x_end = width
         roi_y_start = 0
         roi_y_end = height
         logger.info(f"Smart ID detected - Focusing on RIGHT side: x={roi_x_start}-{roi_x_end}")
     elif id_type == 'green':
         # Green ID Book: Photo typically in upper-center area
-        roi_x_start = int(width * 0.2)   # 20% from left
-        roi_x_end = int(width * 0.8)     # 80% from left (center 60%)
+        roi_x_start = int(width * 0.15)  # 15% from left (was 20%)
+        roi_x_end = int(width * 0.85)    # 85% from left (was 80%)
         roi_y_start = 0
-        roi_y_end = int(height * 0.7)    # Top 70%
+        roi_y_end = int(height * 0.75)   # Top 75% (was 70%)
         logger.info(f"Green ID detected - Focusing on upper-center area")
     else:
         # Full image scan
@@ -107,12 +107,12 @@ def detect_faces_opencv(image: np.ndarray, id_type: str = 'full') -> List[Tuple[
     # Apply histogram equalization to improve detection
     gray_roi = cv2.equalizeHist(gray_roi)
     
-    # Detect faces in ROI with STRICT parameters to avoid false positives
+    # Detect faces in ROI with BALANCED parameters
     faces_in_roi = face_cascade.detectMultiScale(
         gray_roi,
         scaleFactor=1.05,     # Smaller steps = more thorough detection
-        minNeighbors=8,       # HIGHER = more strict, fewer false positives
-        minSize=(80, 80),     # Larger minimum size
+        minNeighbors=6,       # BALANCED (was 8, too strict; was 5, too loose)
+        minSize=(60, 60),     # Reasonable minimum (was 80x80, too strict)
         flags=cv2.CASCADE_SCALE_IMAGE
     )
     
@@ -134,11 +134,12 @@ def detect_faces_opencv(image: np.ndarray, id_type: str = 'full') -> List[Tuple[
         valid_faces = []
         for (x, y, w, h) in faces:
             face_area = w * h
-            # Face must be at least 1% of image area (reject tiny detections like dots)
-            if face_area >= (image_area * 0.01):
+            # Face must be at least 0.5% of image area (was 1%, too strict)
+            min_area = image_area * 0.005
+            if face_area >= min_area:
                 valid_faces.append((x, y, w, h))
             else:
-                logger.info(f"Rejected face: too small ({face_area} < {image_area * 0.01})")
+                logger.info(f"Rejected face: too small ({face_area} < {min_area})")
         
         logger.info(f"Valid faces after size filtering: {len(valid_faces)}")
         return np.array(valid_faces) if valid_faces else np.array([])
@@ -190,7 +191,7 @@ def score_faces(faces: np.ndarray, image_shape: tuple) -> list:
         confidence = min(100, combined_score * 150)  # Boost for better display
         
         # REJECT if confidence too low or bad aspect ratio
-        if confidence < 30 or not aspect_ratio_valid:
+        if confidence < 25 or not aspect_ratio_valid:  # Lowered from 30 to 25
             logger.info(f"Rejected face {idx}: confidence={confidence:.1f}%, aspect_ratio={aspect_ratio:.2f}")
             continue
         
@@ -363,7 +364,7 @@ async def extract_face(
         best_face = scored_faces[0]
         
         # Final confidence check: Reject if too low
-        if best_face.get('confidence', 0) < 40:
+        if best_face.get('confidence', 0) < 30:  # Lowered from 40 to 30
             raise HTTPException(
                 status_code=404,
                 detail=f"Face detection confidence too low ({best_face.get('confidence', 0):.1f}%). Please capture a clearer image with better lighting."
