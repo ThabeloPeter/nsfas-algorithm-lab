@@ -10,6 +10,7 @@ import fitz  # PyMuPDF
 from typing import Dict, Any, List, Tuple
 import logging
 from mtcnn import MTCNN
+import face_recognition
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -445,88 +446,88 @@ async def compare_faces(
     id_photo: UploadFile = File(...)
 ) -> JSONResponse:
     """
-    Compare two face images using MTCNN + histogram comparison.
+    Compare two face images using face_recognition (dlib ResNet).
+    Accuracy: 99.38% on LFW benchmark.
     
     Returns:
         - match: Boolean indicating if faces match
         - similarity: Similarity score (0-100)
         - confidence: Match confidence percentage
+        - distance: Face encoding distance (lower = more similar)
     """
     try:
         # Load both images
         selfie_bytes = await selfie.read()
         id_bytes = await id_photo.read()
         
-        # Decode images
-        selfie_arr = np.frombuffer(selfie_bytes, np.uint8)
-        id_arr = np.frombuffer(id_bytes, np.uint8)
+        # Convert to RGB format for face_recognition
+        selfie_img = face_recognition.load_image_file(io.BytesIO(selfie_bytes))
+        id_img = face_recognition.load_image_file(io.BytesIO(id_bytes))
         
-        selfie_img = cv2.imdecode(selfie_arr, cv2.IMREAD_COLOR)
-        id_img = cv2.imdecode(id_arr, cv2.IMREAD_COLOR)
+        logger.info("🔍 Detecting faces in selfie and ID photo...")
         
-        if selfie_img is None or id_img is None:
-            raise HTTPException(status_code=400, detail="Invalid image files.")
+        # Get face encodings (128-dimensional embeddings)
+        selfie_encodings = face_recognition.face_encodings(selfie_img)
+        id_encodings = face_recognition.face_encodings(id_img)
         
-        # Detect faces using MTCNN
-        selfie_faces = detect_faces_mtcnn(selfie_img)
-        id_faces = detect_faces_mtcnn(id_img)
+        if len(selfie_encodings) == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail="No face detected in selfie. Please ensure your face is clearly visible."
+            )
         
-        if len(selfie_faces) == 0:
-            raise HTTPException(status_code=404, detail="No face detected in selfie.")
+        if len(id_encodings) == 0:
+            raise HTTPException(
+                status_code=404, 
+                detail="No face detected in ID photo. Please use the extracted face from your ID."
+            )
         
-        if len(id_faces) == 0:
-            raise HTTPException(status_code=404, detail="No face detected in ID photo.")
+        # Compare faces using Euclidean distance
+        distances = face_recognition.face_distance([id_encodings[0]], selfie_encodings[0])
+        distance = float(distances[0])
         
-        # Extract first face from each
-        sx, sy, sw, sh = selfie_faces[0]['box']
-        ix, iy, iw, ih = id_faces[0]['box']
+        # Convert distance to similarity percentage
+        # Distance range: 0 (identical) to 1+ (very different)
+        # Industry standard threshold: 0.6
+        similarity = max(0, min(100, (1 - distance) * 100))
         
-        selfie_face = selfie_img[sy:sy+sh, sx:sx+sw]
-        id_face = id_img[iy:iy+ih, ix:ix+iw]
+        # Determine match based on threshold
+        threshold = 0.6  # Industry standard for face_recognition
+        is_match = distance < threshold
         
-        # Resize to same size for comparison
-        target_size = (100, 100)
-        selfie_resized = cv2.resize(selfie_face, target_size)
-        id_resized = cv2.resize(id_face, target_size)
+        # Calculate confidence level
+        if distance < 0.4:
+            confidence_level = "Very High"
+            confidence = 95
+        elif distance < 0.5:
+            confidence_level = "High"
+            confidence = 85
+        elif distance < 0.6:
+            confidence_level = "Medium"
+            confidence = 75
+        else:
+            confidence_level = "Low"
+            confidence = max(0, 70 - (distance - 0.6) * 100)
         
-        # Convert to grayscale
-        selfie_gray = cv2.cvtColor(selfie_resized, cv2.COLOR_BGR2GRAY)
-        id_gray = cv2.cvtColor(id_resized, cv2.COLOR_BGR2GRAY)
-        
-        # Calculate histogram similarity
-        selfie_hist = cv2.calcHist([selfie_gray], [0], None, [256], [0, 256])
-        id_hist = cv2.calcHist([id_gray], [0], None, [256], [0, 256])
-        
-        # Normalize histograms
-        cv2.normalize(selfie_hist, selfie_hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-        cv2.normalize(id_hist, id_hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
-        
-        # Compare histograms (correlation method)
-        similarity = cv2.compareHist(selfie_hist, id_hist, cv2.HISTCMP_CORREL)
-        
-        # Convert to percentage
-        similarity_percent = max(0, min(100, similarity * 100))
-        
-        # Match threshold (70%)
-        threshold = 0.7
-        is_match = similarity > threshold
-        
-        logger.info(f"Face comparison - Similarity: {similarity:.4f}, Match: {is_match}")
+        logger.info(f"✅ Face comparison complete - Distance: {distance:.4f}, Match: {is_match}, Similarity: {similarity:.1f}%")
         
         return JSONResponse(content={
             'success': True,
             'match': bool(is_match),
-            'similarity': round(similarity_percent, 1),
-            'confidence': round(similarity_percent, 1),
-            'threshold': threshold * 100,
-            'method': 'MTCNN + Histogram Correlation'
+            'similarity': round(similarity, 1),
+            'confidence': round(confidence, 1),
+            'confidence_level': confidence_level,
+            'distance': round(distance, 4),
+            'threshold': threshold,
+            'method': 'face_recognition (dlib ResNet)',
+            'accuracy': '99.38% (LFW benchmark)'
         })
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error comparing faces: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        logger.error(f"❌ Error comparing faces: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Face comparison error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

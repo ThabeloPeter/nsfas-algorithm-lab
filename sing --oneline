@@ -1,0 +1,25 @@
+[33m4f83f8e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m REVERT to simple camera setup - remove all retry logic, complex checks, just basic getUserMedia with 100ms delay
+[33md0bc25d[m REMOVE Framer Motion from camera view - it was blocking video element mount on mobile. Use plain div instead
+[33m1c2f74e[m CRITICAL: Fix infinite retry loop - add max retry limit, disable Framer Motion initial animation, increase initial delay to 500ms
+[33md58ad52[m Fix: Start camera after video element mounts using useEffect, add retry logic if ref is null
+[33me6a1fcf[m Revert to simple camera setup: no mirror, back camera only, clean video rendering with Tailwind classes
+[33md21d020[m CRITICAL FIX: Mobile black screen - force video load/play, fixed positioning. PC mirror works correctly (look left = see left)
+[33mcaa5159[m Fix camera: PC front camera mirrors (selfie view), mobile back camera no mirror, use 100vh and inline styles for mobile rendering
+[33md054d52[m Remove mirror transform, simplify camera setup, use inline styles for mobile video rendering, lower resolution for compatibility
+[33m53c9a40[m Fix mobile camera: fallback to front camera if back fails, webkit-playsinline, conditional mirror transform, retry logic
+[33m357bb23[m Add camera debugging: console logs, loading indicator, force video play, better error handling
+[33m8213d8a[m Fix camera black screen: proper z-index layering (video z-0, overlays z-10+)
+[33m48b3666[m Fix JSX syntax error: properly wrap conditional rendering
+[33m1dbc50d[m Transform camera UI: full-screen immersive mode, overlay controls, accurate ID guides (Smart: 1.585:1, Green: 1:1.42 ratio)
+[33me15bd5e[m Add robust image preprocessing: CLAHE, denoising, normalization to handle all lighting conditions (dark, bright, uneven)
+[33me5da247[m Balance detection parameters: relax thresholds to detect real faces while maintaining ROI optimization benefits
+[33m792bd79[m Add ROI optimization: Smart ID focuses on RIGHT side (photo area), Green ID on upper-center, eliminates false positives from left side
+[33m7fa7342[m Add strict face validation: confidence thresholds, aspect ratio checks, minimum size filtering to prevent false positives
+[33m77396a8[m Add smart features: lighting detection with warnings, flash toggle, and accurate ID-specific frame guides
+[33mb3435e1[m Transform to mobile-first camera capture: ID type selection, guided framing, live camera preview
+[33m4e29feb[m Add deployment guide and environment variable example
+[33m6d16190[m Upgrade API to OpenCV: Server-side processing, high-quality PDF conversion, smart face extraction
+[33m1bc659b[m Move logo to public folder and update component to use correct path
+[33m0f68d39[m Add homepage with automatic redirect to Algorithm Lab
+[33mec85989[m Fix: Add jsconfig.json to resolve module path aliases for Vercel deployment
+[33mf3b5519[m Initial commit: NSFAS Algorithm Lab - Face extraction showcase with Next.js + HuggingFace API

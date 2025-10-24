@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Camera, Loader2, AlertCircle, CheckCircle, RefreshCw, Download, CreditCard, BookOpen } from 'lucide-react';
+import { Camera, Loader2, AlertCircle, CheckCircle, RefreshCw, Download, CreditCard, BookOpen, User, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { extractFaceFromDocument } from '@/lib/faceExtractionApi';
+import { extractFaceFromDocument, compareFaces, base64ToBlob } from '@/lib/faceExtractionApi';
 
 export default function FaceExtractionTool() {
-  const [step, setStep] = useState('select'); // select, camera, processing, result
+  const [step, setStep] = useState('select'); // select, camera, processing, result, selfie-prompt, selfie-camera, comparing, verification-result
   const [idType, setIdType] = useState(null); // 'smart' or 'green'
   const [capturedImage, setCapturedImage] = useState(null);
   const [extractedFaceUrl, setExtractedFaceUrl] = useState(null);
@@ -20,6 +20,10 @@ export default function FaceExtractionTool() {
   const [feedback, setFeedback] = useState(''); // Progressive feedback message
   const [isAligned, setIsAligned] = useState(false); // Whether ID is properly aligned
   const [isMobile, setIsMobile] = useState(false); // Mobile device detection
+  
+  // New states for selfie verification
+  const [selfieImage, setSelfieImage] = useState(null);
+  const [verificationResult, setVerificationResult] = useState(null);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -387,6 +391,104 @@ export default function FaceExtractionTool() {
     setStep('select');
     if (capturedImage) URL.revokeObjectURL(capturedImage);
     if (extractedFaceUrl) URL.revokeObjectURL(extractedFaceUrl);
+    if (selfieImage) URL.revokeObjectURL(selfieImage.url);
+    setSelfieImage(null);
+    setVerificationResult(null);
+  };
+
+  // Start selfie camera
+  const startSelfieCamera = () => {
+    setStep('selfie-camera');
+    setError(null);
+    setTimeout(async () => {
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { 
+            facingMode: 'user', // Front camera for selfie
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          setStream(mediaStream);
+          startFrameAnalysis(); // Reuse existing frame analysis
+        }
+      } catch (err) {
+        console.error('Camera error:', err);
+        setError('Unable to access front camera. Please grant camera permission.');
+        setStep('selfie-prompt');
+      }
+    }, 100);
+  };
+
+  // Capture selfie
+  const captureSelfie = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      
+      const url = URL.createObjectURL(blob);
+      setSelfieImage({ url, blob });
+      
+      // Stop camera
+      stopCamera();
+      
+      // Trigger haptic feedback
+      triggerHaptic('success');
+      
+      // Start comparison
+      compareSelfieWithId(blob);
+    }, 'image/jpeg', 0.95);
+  };
+
+  // Compare selfie with ID photo
+  const compareSelfieWithId = async (selfieBlob) => {
+    setStep('comparing');
+    setError(null);
+
+    try {
+      console.log('🔄 Comparing selfie with ID photo...');
+      
+      // Convert base64 ID photo to blob
+      const idPhotoBlob = base64ToBlob(extractedFaceUrl);
+      
+      // Create files
+      const selfieFile = new File([selfieBlob], 'selfie.jpg', { type: 'image/jpeg' });
+      const idPhotoFile = new File([idPhotoBlob], 'id-photo.jpg', { type: 'image/jpeg' });
+      
+      // Call comparison API
+      const result = await compareFaces(selfieFile, idPhotoFile);
+      
+      if (!result.success) {
+        throw new Error('Face comparison failed');
+      }
+      
+      setVerificationResult(result);
+      setStep('verification-result');
+      
+      // Trigger haptic based on result
+      triggerHaptic(result.match ? 'success' : 'error');
+      
+      console.log('✅ Verification complete:', result.match ? 'MATCH' : 'NO MATCH');
+      
+    } catch (err) {
+      console.error('❌ Comparison error:', err);
+      setError(err.message || 'Face comparison failed. Please try again.');
+      setStep('selfie-prompt');
+      triggerHaptic('error');
+    }
   };
 
   // Download
@@ -745,15 +847,389 @@ export default function FaceExtractionTool() {
               )}
 
               {/* Actions */}
+              <div className="space-y-3">
+                {/* Verification Prompt */}
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                  <div className="flex items-start space-x-3 mb-3">
+                    <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-white mb-1">
+                        🎯 Next Step: Verify Identity
+                      </p>
+                      <p className="text-xs text-white/60 font-light">
+                        Take a selfie to confirm this is really you
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setStep('selfie-prompt')}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm flex items-center justify-center space-x-2 transition-all"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Continue to Verification</span>
+                  </button>
+                </div>
+
                 <button
                   onClick={handleReset}
-              className="w-full py-4 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
+                  className="w-full py-4 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
                 >
                   <RefreshCw className="w-4 h-4" />
-              <span>Capture Another ID</span>
+                  <span>Start Over</span>
                 </button>
+              </div>
           </motion.div>
           )}
+
+        {/* Step 5: Selfie Prompt */}
+        {step === 'selfie-prompt' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
+              <div className="flex items-center justify-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
+                  <Shield className="w-8 h-8 text-blue-400" />
+                </div>
+              </div>
+
+              <h3 className="text-xl font-semibold text-white text-center mb-2">
+                Identity Verification
+              </h3>
+              <p className="text-sm text-white/60 text-center mb-6 font-light">
+                Let's verify this is really you
+              </p>
+
+              {/* ID Photo Preview */}
+              <div className="mb-6">
+                <p className="text-xs text-white/50 text-center mb-2">Your ID Photo</p>
+                <div className="relative w-32 h-32 mx-auto bg-white/5 rounded-xl border border-white/20 overflow-hidden">
+                  <img
+                    src={extractedFaceUrl}
+                    alt="ID face"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+                <p className="text-sm text-white/90 mb-3 font-medium">Ready to verify?</p>
+                <p className="text-xs text-white/60 mb-3 font-light">
+                  We'll compare your live selfie with the ID photo above
+                </p>
+                <div className="space-y-1.5 text-xs text-white/60">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <span>Face the camera directly</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <span>Ensure good lighting</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <span>Remove glasses if possible</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <span>Use a neutral expression</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={startSelfieCamera}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all"
+                >
+                  <Camera className="w-5 h-5" />
+                  <span>Take Selfie</span>
+                </button>
+                <button
+                  onClick={() => setStep('result')}
+                  className="w-full py-3 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
+                >
+                  <span>Back to Results</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 6: Selfie Camera */}
+        {step === 'selfie-camera' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className={isMobile ? "fixed inset-0 z-50 bg-black" : "space-y-4"}
+          >
+            <div className={isMobile 
+              ? "fixed inset-0 w-full h-full" 
+              : "relative bg-white/5 rounded-2xl overflow-hidden border border-white/10"
+            }>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={isMobile 
+                  ? "absolute inset-0 w-full h-full object-cover" 
+                  : "w-full h-auto"
+                }
+              />
+              
+              {/* Oval Face Guide for Selfie */}
+              <div className="absolute inset-0 pointer-events-none">
+                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <ellipse 
+                    cx="50" 
+                    cy="45" 
+                    rx="30" 
+                    ry="38"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.5)"
+                    strokeWidth="0.3"
+                    strokeDasharray="2,2"
+                  />
+                  {/* Guide text */}
+                  <text x="50" y="90" fontSize="3" fill="white" textAnchor="middle" opacity="0.7">
+                    Center your face in the oval
+                  </text>
+                </svg>
+              </div>
+
+              {/* Progressive Feedback */}
+              <div className="absolute top-4 left-0 right-0 px-4 space-y-2 z-30">
+                <AnimatePresence>
+                  {feedback && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm text-center border border-white/20"
+                    >
+                      {feedback}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Alignment Indicator */}
+              {isAligned && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute inset-0 border-4 border-green-500 rounded-2xl pointer-events-none z-20"
+                />
+              )}
+
+              {/* Close Button (Mobile) */}
+              {isMobile && (
+                <div className="fixed top-4 left-4 z-50">
+                  <button
+                    onClick={() => { stopCamera(); setStep('selfie-prompt'); }}
+                    className="p-3 rounded-full bg-black/70 text-white hover:bg-black/80 backdrop-blur-sm transition-all"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {/* Flash Toggle Button */}
+              <div className={isMobile 
+                ? "fixed bottom-24 right-4 z-50" 
+                : "absolute bottom-4 right-4"
+              }>
+                <button
+                  onClick={toggleFlash}
+                  className={`p-3 rounded-full backdrop-blur-sm transition-all ${
+                    flashEnabled 
+                      ? 'bg-yellow-500 text-black' 
+                      : 'bg-black/70 text-white hover:bg-black/80'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Capture Button */}
+            <div className={isMobile
+              ? "fixed bottom-4 left-4 right-4 z-50 flex space-x-3"
+              : "flex space-x-3"
+            }>
+              <button
+                onClick={captureSelfie}
+                disabled={!stream}
+                className="flex-1 bg-white text-black py-4 rounded-xl font-semibold hover:bg-white/90 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Camera className="w-5 h-5" />
+                <span>Capture Selfie</span>
+              </button>
+              {!isMobile && (
+                <button
+                  onClick={() => { stopCamera(); setStep('selfie-prompt'); }}
+                  className="px-6 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 7: Comparing */}
+        {step === 'comparing' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/5 rounded-2xl border border-white/10 p-12 text-center"
+          >
+            <div className="flex items-center justify-center space-x-8 mb-8">
+              {/* ID Photo */}
+              <div className="text-center">
+                <div className="w-24 h-24 rounded-xl border-2 border-white/20 overflow-hidden mb-2">
+                  <img src={extractedFaceUrl} alt="ID" className="w-full h-full object-cover" />
+                </div>
+                <p className="text-xs text-white/50">ID Photo</p>
+              </div>
+
+              {/* Comparison Icon */}
+              <div className="relative">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  <Loader2 className="w-12 h-12 text-blue-400" />
+                </motion.div>
+              </div>
+
+              {/* Selfie */}
+              <div className="text-center">
+                <div className="w-24 h-24 rounded-xl border-2 border-white/20 overflow-hidden mb-2">
+                  <img src={selfieImage?.url} alt="Selfie" className="w-full h-full object-cover" />
+                </div>
+                <p className="text-xs text-white/50">Your Selfie</p>
+              </div>
+            </div>
+
+            <h3 className="text-lg font-semibold text-white mb-2">Verifying Identity...</h3>
+            <p className="text-sm text-white/60 font-light">
+              Comparing faces using AI (99.38% accuracy)
+            </p>
+          </motion.div>
+        )}
+
+        {/* Step 8: Verification Result */}
+        {step === 'verification-result' && verificationResult && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            {/* Result Header */}
+            <div className={`rounded-2xl border p-6 text-center ${
+              verificationResult.match 
+                ? 'bg-green-500/10 border-green-500/20' 
+                : 'bg-red-500/10 border-red-500/20'
+            }`}>
+              <div className="flex items-center justify-center mb-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                  verificationResult.match ? 'bg-green-500/20' : 'bg-red-500/20'
+                }`}>
+                  {verificationResult.match ? (
+                    <CheckCircle className="w-8 h-8 text-green-400" />
+                  ) : (
+                    <AlertCircle className="w-8 h-8 text-red-400" />
+          )}
+        </div>
+              </div>
+
+              <h3 className={`text-2xl font-bold mb-2 ${
+                verificationResult.match ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {verificationResult.match ? '✅ Identity Verified!' : '⚠️ Verification Failed'}
+              </h3>
+              <p className="text-sm text-white/60 font-light">
+                {verificationResult.match 
+                  ? 'The photos match! Identity confirmed.' 
+                  : 'The photos don\'t match or quality is too low.'}
+              </p>
+            </div>
+
+            {/* Comparison Visual */}
+            <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
+              <div className="flex items-center justify-center space-x-6 mb-6">
+                <div className="text-center">
+                  <div className="w-28 h-28 rounded-xl border-2 border-white/20 overflow-hidden mb-2">
+                    <img src={extractedFaceUrl} alt="ID" className="w-full h-full object-cover" />
+                  </div>
+                  <p className="text-xs text-white/50">ID Photo</p>
+                </div>
+
+                <div className="text-2xl">
+                  {verificationResult.match ? '✓' : '✗'}
+                </div>
+
+                <div className="text-center">
+                  <div className="w-28 h-28 rounded-xl border-2 border-white/20 overflow-hidden mb-2">
+                    <img src={selfieImage?.url} alt="Selfie" className="w-full h-full object-cover" />
+                  </div>
+                  <p className="text-xs text-white/50">Your Selfie</p>
+                </div>
+              </div>
+
+              {/* Metrics */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/5 p-3 rounded-lg text-center">
+                  <p className="text-xs text-white/50 mb-1">Similarity</p>
+                  <p className="text-lg font-semibold text-white">{verificationResult.similarity}%</p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-lg text-center">
+                  <p className="text-xs text-white/50 mb-1">Confidence</p>
+                  <p className="text-lg font-semibold text-white">{verificationResult.confidence}%</p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-lg text-center">
+                  <p className="text-xs text-white/50 mb-1">Distance</p>
+                  <p className="text-lg font-semibold text-white">{verificationResult.distance}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Technical Details */}
+            <div className="bg-white/5 rounded-xl border border-white/10 p-4 text-xs text-white/60">
+              <p className="mb-1"><strong>Method:</strong> face_recognition (dlib ResNet)</p>
+              <p className="mb-1"><strong>Accuracy:</strong> 99.38% (LFW benchmark)</p>
+              <p><strong>Threshold:</strong> {verificationResult.threshold}</p>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-3">
+              {!verificationResult.match && (
+                <button
+                  onClick={startSelfieCamera}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center justify-center space-x-2 transition-all"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Retry Selfie</span>
+                </button>
+              )}
+              <button
+                onClick={handleReset}
+                className="w-full py-4 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Verify Another Person</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
 
         {/* Hidden canvas for capture */}
         <canvas ref={canvasRef} className="hidden" />
