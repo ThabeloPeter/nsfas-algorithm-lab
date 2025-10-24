@@ -20,12 +20,23 @@ export default function FaceExtractionTool() {
   const [feedback, setFeedback] = useState(''); // Progressive feedback message
   const [countdown, setCountdown] = useState(null); // Auto-capture countdown
   const [isAligned, setIsAligned] = useState(false); // Whether ID is properly aligned
+  const [isMobile, setIsMobile] = useState(false); // Mobile device detection
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const lightingCheckInterval = useRef(null);
   const frameAnalysisInterval = useRef(null);
   const countdownTimer = useRef(null);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Start camera
   const startCamera = async () => {
@@ -505,15 +516,21 @@ export default function FaceExtractionTool() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="space-y-4"
+            className={isMobile ? "fixed inset-0 z-50 bg-black" : "space-y-4"}
           >
-            <div className="relative bg-white/5 rounded-2xl overflow-hidden border border-white/10">
+            <div className={isMobile 
+              ? "fixed inset-0 w-full h-full" 
+              : "relative bg-white/5 rounded-2xl overflow-hidden border border-white/10"
+            }>
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-auto"
+                className={isMobile 
+                  ? "absolute inset-0 w-full h-full object-cover" 
+                  : "w-full h-auto"
+                }
               />
               
               {/* Camera Guide Overlay - Different dimensions for each ID type */}
@@ -630,8 +647,25 @@ export default function FaceExtractionTool() {
                 />
               )}
 
+              {/* Close Button (Mobile) */}
+              {isMobile && (
+                <div className="fixed top-4 left-4 z-50">
+                  <button
+                    onClick={handleReset}
+                    className="p-3 rounded-full bg-black/70 text-white hover:bg-black/80 backdrop-blur-sm transition-all"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+            </div>
+          )}
+
               {/* Flash Toggle Button */}
-              <div className="absolute bottom-4 right-4">
+              <div className={isMobile 
+                ? "fixed bottom-24 right-4 z-50" 
+                : "absolute bottom-4 right-4"
+              }>
                 <button
                   onClick={toggleFlash}
                   className={`p-3 rounded-full backdrop-blur-sm transition-all ${
@@ -648,7 +682,10 @@ export default function FaceExtractionTool() {
             </div>
 
             {/* Capture Button */}
-            <div className="flex space-x-3">
+            <div className={isMobile
+              ? "fixed bottom-4 left-4 right-4 z-50 flex space-x-3"
+              : "flex space-x-3"
+            }>
               {countdown !== null ? (
                 <button
                   onClick={cancelCountdown}
@@ -667,24 +704,28 @@ export default function FaceExtractionTool() {
                   <span>Capture Now</span>
                 </button>
               )}
-              <button
-                onClick={handleReset}
-                className="px-6 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all"
-              >
-                Cancel
-              </button>
+              {!isMobile && (
+                <button
+                  onClick={handleReset}
+                  className="px-6 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
 
             {/* Tips */}
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-              <p className="text-xs text-blue-300 font-semibold mb-2">✨ Smart Capture Features:</p>
-              <ul className="text-xs text-blue-200/80 space-y-1 font-light">
-                <li>• <strong>Auto-Capture:</strong> Aligns perfectly? We'll capture automatically!</li>
-                <li>• <strong>Real-time Guidance:</strong> Follow on-screen instructions</li>
-                <li>• <strong>Quality Check:</strong> We ensure optimal lighting & focus</li>
-                <li>• <strong>Manual Override:</strong> Tap "Capture Now" anytime</li>
-              </ul>
-            </div>
+            {!isMobile && (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                <p className="text-xs text-blue-300 font-semibold mb-2">✨ Smart Capture Features:</p>
+                <ul className="text-xs text-blue-200/80 space-y-1 font-light">
+                  <li>• <strong>Auto-Capture:</strong> Aligns perfectly? We'll capture automatically!</li>
+                  <li>• <strong>Real-time Guidance:</strong> Follow on-screen instructions</li>
+                  <li>• <strong>Quality Check:</strong> We ensure optimal lighting & focus</li>
+                  <li>• <strong>Manual Override:</strong> Tap "Capture Now" anytime</li>
+                </ul>
+              </div>
+            )}
           </motion.div>
         )}
 
