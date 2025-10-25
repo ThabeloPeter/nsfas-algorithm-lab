@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Scan, ArrowLeft, TestTube2, Sparkles, Play } from 'lucide-react';
+import { Scan, ArrowLeft, TestTube2, Sparkles, Play, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const testTools = [
@@ -14,15 +14,23 @@ const testTools = [
     status: 'active',
     tag: 'Active'
   },
-  // Add more tools here as you build them
   {
-    id: 'coming-soon-1',
-    title: 'Coming Soon',
-    description: 'More innovative algorithms and solutions in development',
-    icon: TestTube2,
-    href: '#',
-    status: 'disabled',
-    tag: 'Soon'
+    id: 'nsfas-ai-assistant',
+    title: 'NSFAS AI Assistant',
+    description: 'Get instant answers and support from our intelligent AI chatbot',
+    icon: Sparkles,
+    href: 'https://nsfas-chatbot-interface.vercel.app/',
+    status: 'active',
+    tag: 'Active'
+  },
+  {
+    id: 'profile-reset-v1',
+    title: 'NSFAS Profile Reset Version 1',
+    description: 'Update your email or phone number with secure identity verification',
+    icon: RefreshCw,
+    href: 'https://nsfas-two.vercel.app/',
+    status: 'active',
+    tag: 'Active'
   }
 ];
 
