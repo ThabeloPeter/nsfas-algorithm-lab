@@ -510,18 +510,18 @@ export default function FaceExtractionTool() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
       <div className="max-w-2xl mx-auto px-4 py-8">
         
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
             Face Extraction
           </h1>
-          <p className="text-white/60 text-sm font-light">
+          <p className="text-gray-600 dark:text-white/60 text-sm font-light">
             Capture your ID to extract the face photo
           </p>
-          <div className="h-0.5 w-24 bg-gradient-to-r from-white to-transparent mt-4 mx-auto"></div>
+          <div className="h-0.5 w-24 bg-gradient-to-r from-blue-600 dark:from-white to-transparent mt-4 mx-auto"></div>
         </div>
 
         {/* Error */}
@@ -552,35 +552,35 @@ export default function FaceExtractionTool() {
             className="space-y-4"
           >
             <div className="text-center mb-6">
-              <p className="text-white/80 text-sm mb-2">Select your ID document type:</p>
+              <p className="text-gray-700 dark:text-white/80 text-sm mb-2">Select your ID document type:</p>
             </div>
 
             <button
               onClick={() => selectIdType('smart')}
-              className="w-full bg-white/5 hover:bg-white/10 border border-white/20 hover:border-white/40 rounded-2xl p-6 transition-all text-left group"
+              className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-white/20 transition-colors">
-                  <CreditCard className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors">
+                  <CreditCard className="w-6 h-6 text-blue-600 dark:text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-1">Smart ID Card</h3>
-                  <p className="text-sm text-white/60 font-light">Card-style ID with photo on the front</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Smart ID Card</h3>
+                  <p className="text-sm text-gray-600 dark:text-white/60 font-light">Card-style ID with photo on the front</p>
                       </div>
                     </div>
             </button>
 
             <button
               onClick={() => selectIdType('green')}
-              className="w-full bg-white/5 hover:bg-white/10 border border-white/20 hover:border-white/40 rounded-2xl p-6 transition-all text-left group"
+              className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-white/20 transition-colors">
-                  <BookOpen className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors">
+                  <BookOpen className="w-6 h-6 text-blue-600 dark:text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-1">Green ID Book</h3>
-                  <p className="text-sm text-white/60 font-light">Book-style ID with photo on inside page</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Green ID Book</h3>
+                  <p className="text-sm text-gray-600 dark:text-white/60 font-light">Book-style ID with photo on inside page</p>
                   </div>
                 </div>
             </button>
@@ -592,11 +592,11 @@ export default function FaceExtractionTool() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className={isMobile ? "fixed inset-0 z-50 bg-black" : "space-y-4"}
+            className={isMobile ? "fixed inset-0 z-50 bg-white dark:bg-black" : "space-y-4"}
           >
             <div className={isMobile 
               ? "fixed inset-0 w-full h-full" 
-              : "relative bg-white/5 rounded-2xl overflow-hidden border border-white/10"
+              : "relative bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden border border-gray-300 dark:border-white/10"
             }>
               <video
                 ref={videoRef}
@@ -780,11 +780,11 @@ export default function FaceExtractionTool() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white/5 rounded-2xl border border-white/10 p-12 text-center"
+            className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-12 text-center shadow-lg"
           >
-            <Loader2 className="w-16 h-16 text-white animate-spin mx-auto mb-6" />
-            <h3 className="text-lg font-semibold text-white mb-2">Processing</h3>
-            <p className="text-sm text-white/60 font-light">
+            <Loader2 className="w-16 h-16 text-blue-600 dark:text-white animate-spin mx-auto mb-6" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Processing</h3>
+            <p className="text-sm text-gray-600 dark:text-white/60 font-light">
               Extracting face from your ID document...
             </p>
           </motion.div>
@@ -798,13 +798,13 @@ export default function FaceExtractionTool() {
             className="space-y-4"
           >
             {/* Extracted Face */}
-            <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
+            <div className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-6 shadow-lg">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-white">Extracted Face</h3>
-                <CheckCircle className="w-5 h-5 text-green-400" />
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Extracted Face</h3>
+                <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-400" />
                 </div>
 
-              <div className="relative aspect-square max-w-xs mx-auto bg-white/5 rounded-xl border border-white/20 overflow-hidden mb-4">
+              <div className="relative aspect-square max-w-xs mx-auto bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-300 dark:border-white/20 overflow-hidden mb-4">
                     <img
                       src={extractedFaceUrl}
                       alt="Extracted face"
@@ -814,7 +814,7 @@ export default function FaceExtractionTool() {
 
                     <button
                       onClick={handleDownload}
-                className="w-full py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-all font-medium text-sm flex items-center justify-center space-x-2"
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 dark:bg-white text-white dark:text-black rounded-lg dark:hover:bg-white/90 transition-all font-medium text-sm flex items-center justify-center space-x-2"
                     >
                       <Download className="w-4 h-4" />
                 <span>Download Face</span>
@@ -823,30 +823,30 @@ export default function FaceExtractionTool() {
 
               {/* Stats */}
               {extractionData && (
-              <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
-                <h4 className="text-sm font-semibold text-white mb-4">Extraction Details</h4>
+              <div className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-6 shadow-lg">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Extraction Details</h4>
                 
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-white/5 p-3 rounded-lg">
-                    <p className="text-xs text-white/50 mb-1">Faces Detected</p>
-                    <p className="text-xl font-semibold text-white">{extractionData.totalFaces}</p>
+                  <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Faces Detected</p>
+                    <p className="text-xl font-semibold text-gray-900 dark:text-white">{extractionData.totalFaces}</p>
                     </div>
-                  <div className="bg-white/5 p-3 rounded-lg">
-                    <p className="text-xs text-white/50 mb-1">Confidence</p>
-                    <p className="text-xl font-semibold text-white">{extractionData.confidence}%</p>
+                  <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Confidence</p>
+                    <p className="text-xl font-semibold text-gray-900 dark:text-white">{extractionData.confidence}%</p>
                     </div>
                   </div>
 
-                <div className="bg-white/5 p-3 rounded-lg text-xs">
-                  <p className="text-white/50 mb-2">Selection Score</p>
+                <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-lg text-xs">
+                  <p className="text-gray-500 dark:text-white/50 mb-2">Selection Score</p>
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-white/60">Size Score:</span>
-                      <span className="text-white font-semibold">{extractionData.sizeScore}%</span>
+                      <span className="text-gray-600 dark:text-white/60">Size Score:</span>
+                      <span className="text-gray-900 dark:text-white font-semibold">{extractionData.sizeScore}%</span>
                       </div>
                     <div className="flex justify-between">
-                      <span className="text-white/60">Position Score:</span>
-                      <span className="text-white font-semibold">{extractionData.positionScore}%</span>
+                      <span className="text-gray-600 dark:text-white/60">Position Score:</span>
+                      <span className="text-gray-900 dark:text-white font-semibold">{extractionData.positionScore}%</span>
                       </div>
                     </div>
                   </div>
@@ -879,7 +879,7 @@ export default function FaceExtractionTool() {
 
                 <button
                   onClick={handleReset}
-                  className="w-full py-4 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
+                  className="w-full py-4 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white rounded-xl border border-gray-300 dark:border-white/20 hover:bg-gray-200 dark:hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <span>Start Over</span>
@@ -895,24 +895,24 @@ export default function FaceExtractionTool() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
+            <div className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-6 shadow-lg">
               <div className="flex items-center justify-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
-                  <Shield className="w-8 h-8 text-blue-400" />
+                <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+                  <Shield className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
 
-              <h3 className="text-xl font-semibold text-white text-center mb-2">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white text-center mb-2">
                 Identity Verification
               </h3>
-              <p className="text-sm text-white/60 text-center mb-6 font-light">
+              <p className="text-sm text-gray-600 dark:text-white/60 text-center mb-6 font-light">
                 Let's verify this is really you
               </p>
 
               {/* ID Photo Preview */}
               <div className="mb-6">
-                <p className="text-xs text-white/50 text-center mb-2">Your ID Photo</p>
-                <div className="relative w-32 h-32 mx-auto bg-white/5 rounded-xl border border-white/20 overflow-hidden">
+                <p className="text-xs text-gray-500 dark:text-white/50 text-center mb-2">Your ID Photo</p>
+                <div className="relative w-32 h-32 mx-auto bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-300 dark:border-white/20 overflow-hidden">
                   <img
                     src={extractedFaceUrl}
                     alt="ID face"
@@ -921,26 +921,26 @@ export default function FaceExtractionTool() {
                 </div>
               </div>
 
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
-                <p className="text-sm text-white/90 mb-3 font-medium">Ready to verify?</p>
-                <p className="text-xs text-white/60 mb-3 font-light">
+              <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 mb-6">
+                <p className="text-sm text-gray-900 dark:text-white/90 mb-3 font-medium">Ready to verify?</p>
+                <p className="text-xs text-gray-600 dark:text-white/60 mb-3 font-light">
                   We'll compare your live selfie with the ID photo above
                 </p>
-                <div className="space-y-1.5 text-xs text-white/60">
+                <div className="space-y-1.5 text-xs text-gray-600 dark:text-white/60">
                   <div className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400"></div>
                     <span>Face the camera directly</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400"></div>
                     <span>Ensure good lighting</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400"></div>
                     <span>Remove glasses if possible</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400"></div>
                     <span>Use a neutral expression</span>
                   </div>
                 </div>
@@ -956,7 +956,7 @@ export default function FaceExtractionTool() {
                 </button>
                 <button
                   onClick={() => setStep('result')}
-                  className="w-full py-3 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
+                  className="w-full py-3 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white rounded-xl border border-gray-300 dark:border-white/20 hover:bg-gray-200 dark:hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
                 >
                   <span>Back to Results</span>
                 </button>
@@ -970,11 +970,11 @@ export default function FaceExtractionTool() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className={isMobile ? "fixed inset-0 z-50 bg-black" : "space-y-4"}
+            className={isMobile ? "fixed inset-0 z-50 bg-white dark:bg-black" : "space-y-4"}
           >
             <div className={isMobile 
               ? "fixed inset-0 w-full h-full" 
-              : "relative bg-white/5 rounded-2xl overflow-hidden border border-white/10"
+              : "relative bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden border border-gray-300 dark:border-white/10"
             }>
               <video
                 ref={videoRef}
@@ -1097,15 +1097,15 @@ export default function FaceExtractionTool() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white/5 rounded-2xl border border-white/10 p-12 text-center"
+            className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-12 text-center shadow-lg"
           >
             <div className="flex items-center justify-center space-x-8 mb-8">
               {/* ID Photo */}
               <div className="text-center">
-                <div className="w-24 h-24 rounded-xl border-2 border-white/20 overflow-hidden mb-2">
+                <div className="w-24 h-24 rounded-xl border-2 border-gray-300 dark:border-white/20 overflow-hidden mb-2">
                   <img src={extractedFaceUrl} alt="ID" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-xs text-white/50">ID Photo</p>
+                <p className="text-xs text-gray-500 dark:text-white/50">ID Photo</p>
               </div>
 
               {/* Comparison Icon */}
@@ -1114,21 +1114,21 @@ export default function FaceExtractionTool() {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                 >
-                  <Loader2 className="w-12 h-12 text-blue-400" />
+                  <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400" />
                 </motion.div>
               </div>
 
               {/* Selfie */}
               <div className="text-center">
-                <div className="w-24 h-24 rounded-xl border-2 border-white/20 overflow-hidden mb-2">
+                <div className="w-24 h-24 rounded-xl border-2 border-gray-300 dark:border-white/20 overflow-hidden mb-2">
                   <img src={selfieImage?.url} alt="Selfie" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-xs text-white/50">Your Selfie</p>
+                <p className="text-xs text-gray-500 dark:text-white/50">Your Selfie</p>
               </div>
             </div>
 
-            <h3 className="text-lg font-semibold text-white mb-2">Verifying Identity...</h3>
-            <p className="text-sm text-white/60 font-light">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Verifying Identity...</h3>
+            <p className="text-sm text-gray-600 dark:text-white/60 font-light">
               Comparing faces using AI (99.38% accuracy)
             </p>
           </motion.div>
@@ -1172,49 +1172,49 @@ export default function FaceExtractionTool() {
             </div>
 
             {/* Comparison Visual */}
-            <div className="bg-white/5 rounded-2xl border border-white/10 p-6">
+            <div className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-6 shadow-lg">
               <div className="flex items-center justify-center space-x-6 mb-6">
                 <div className="text-center">
-                  <div className="w-28 h-28 rounded-xl border-2 border-white/20 overflow-hidden mb-2">
+                  <div className="w-28 h-28 rounded-xl border-2 border-gray-300 dark:border-white/20 overflow-hidden mb-2">
                     <img src={extractedFaceUrl} alt="ID" className="w-full h-full object-cover" />
                   </div>
-                  <p className="text-xs text-white/50">ID Photo</p>
+                  <p className="text-xs text-gray-500 dark:text-white/50">ID Photo</p>
                 </div>
 
-                <div className="text-2xl">
+                <div className="text-2xl text-gray-900 dark:text-white">
                   {verificationResult.match ? '✓' : '✗'}
                 </div>
 
                 <div className="text-center">
-                  <div className="w-28 h-28 rounded-xl border-2 border-white/20 overflow-hidden mb-2">
+                  <div className="w-28 h-28 rounded-xl border-2 border-gray-300 dark:border-white/20 overflow-hidden mb-2">
                     <img src={selfieImage?.url} alt="Selfie" className="w-full h-full object-cover" />
                   </div>
-                  <p className="text-xs text-white/50">Your Selfie</p>
+                  <p className="text-xs text-gray-500 dark:text-white/50">Your Selfie</p>
                 </div>
               </div>
 
               {/* Metrics */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white/5 p-3 rounded-lg text-center">
-                  <p className="text-xs text-white/50 mb-1">Similarity</p>
-                  <p className="text-lg font-semibold text-white">{verificationResult.similarity}%</p>
+                <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-lg text-center">
+                  <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Similarity</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{verificationResult.similarity}%</p>
                 </div>
-                <div className="bg-white/5 p-3 rounded-lg text-center">
-                  <p className="text-xs text-white/50 mb-1">Confidence</p>
-                  <p className="text-lg font-semibold text-white">{verificationResult.confidence}%</p>
+                <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-lg text-center">
+                  <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Confidence</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{verificationResult.confidence}%</p>
                 </div>
-                <div className="bg-white/5 p-3 rounded-lg text-center">
-                  <p className="text-xs text-white/50 mb-1">Distance</p>
-                  <p className="text-lg font-semibold text-white">{verificationResult.distance}</p>
+                <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-lg text-center">
+                  <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Distance</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{verificationResult.distance}</p>
                 </div>
               </div>
             </div>
 
             {/* Technical Details */}
-            <div className="bg-white/5 rounded-xl border border-white/10 p-4 text-xs text-white/60">
-              <p className="mb-1"><strong>Method:</strong> face_recognition (dlib ResNet)</p>
-              <p className="mb-1"><strong>Accuracy:</strong> 99.38% (LFW benchmark)</p>
-              <p><strong>Threshold:</strong> {verificationResult.threshold}</p>
+            <div className="bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-300 dark:border-white/10 p-4 text-xs text-gray-600 dark:text-white/60">
+              <p className="mb-1"><strong className="text-gray-900 dark:text-white">Method:</strong> face_recognition (dlib ResNet)</p>
+              <p className="mb-1"><strong className="text-gray-900 dark:text-white">Accuracy:</strong> 99.38% (LFW benchmark)</p>
+              <p><strong className="text-gray-900 dark:text-white">Threshold:</strong> {verificationResult.threshold}</p>
             </div>
 
             {/* Actions */}
@@ -1230,7 +1230,7 @@ export default function FaceExtractionTool() {
               )}
               <button
                 onClick={handleReset}
-                className="w-full py-4 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
+                className="w-full py-4 bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white rounded-xl border border-gray-300 dark:border-white/20 hover:bg-gray-200 dark:hover:bg-white/20 font-medium flex items-center justify-center space-x-2 transition-all"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Verify Another Person</span>
