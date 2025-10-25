@@ -198,19 +198,19 @@ export default function FaceExtractionTool() {
 
     // Progressive feedback
     if (quality.isTooDark) {
-      setFeedback('💡 Too dark - turn on flash or add more light');
+      setFeedback('Too dark - turn on flash or add more light');
       setIsAligned(false);
     } else if (quality.isTooBright) {
-      setFeedback('☀️ Too bright - move away from direct light');
+      setFeedback('Too bright - move away from direct light');
       setIsAligned(false);
     } else if (quality.isBlurry) {
-      setFeedback('📷 Hold steady - image is blurry');
+      setFeedback('Hold steady - image is blurry');
       setIsAligned(false);
     } else if (quality.isWellLit && quality.hasGoodContrast) {
       setFeedback('✓ Perfect! Hold steady...');
       setIsAligned(true);
     } else {
-      setFeedback('📸 Position ID in the frame');
+      setFeedback('Position ID in the frame');
       setIsAligned(false);
     }
   };
@@ -763,7 +763,7 @@ export default function FaceExtractionTool() {
             {/* Tips */}
             {!isMobile && (
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-                <p className="text-xs text-blue-300 font-semibold mb-2">📸 Tips for best results:</p>
+                <p className="text-xs text-blue-300 font-semibold mb-2">Tips for best results:</p>
                 <ul className="text-xs text-blue-200/80 space-y-1 font-light">
                   <li>• <strong>Real-time Guidance:</strong> Follow on-screen instructions</li>
                   <li>• <strong>Quality Check:</strong> We analyze lighting & focus</li>
@@ -861,7 +861,7 @@ export default function FaceExtractionTool() {
                     <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-white mb-1">
-                        🎯 Next Step: Verify Identity
+                        Next Step: Verify Identity
                       </p>
                       <p className="text-xs text-white/60 font-light">
                         Take a selfie to confirm this is really you
@@ -1162,7 +1162,7 @@ export default function FaceExtractionTool() {
               <h3 className={`text-2xl font-bold mb-2 ${
                 verificationResult.match ? 'text-green-400' : 'text-red-400'
               }`}>
-                {verificationResult.match ? '✅ Identity Verified!' : '⚠️ Verification Failed'}
+                {verificationResult.match ? 'Identity Verified!' : 'Verification Failed'}
               </h3>
               <p className="text-sm text-white/60 font-light">
                 {verificationResult.match 
