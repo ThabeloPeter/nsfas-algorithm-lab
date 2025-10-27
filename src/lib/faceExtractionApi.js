@@ -82,11 +82,13 @@ export const extractFaceFromDocument = async (file, idType = 'full') => {
 
     console.log('✅ Face extraction successful');
     console.log('📊 Metadata:', data.metadata);
+    console.log('📝 OCR Data:', data.ocr_data);
 
     return {
       success: true,
       faceImage: data.face_image, // Base64 encoded image
       metadata: data.metadata,
+      ocrData: data.ocr_data, // OCR extracted fields
     };
 
   } catch (error) {

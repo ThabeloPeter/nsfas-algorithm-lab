@@ -5,6 +5,25 @@ FROM animcogn/face_recognition:cpu
 # Set working directory
 WORKDIR /app
 
+# Set environment variable for PaddleOCR model storage
+ENV PADDLEOCR_HOME=/app/.paddleocr
+
+# Update apt sources to use archive (Buster is archived)
+RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
+    sed -i 's|security.debian.org|archive.debian.org|g' /etc/apt/sources.list && \
+    sed -i '/stretch-updates/d' /etc/apt/sources.list && \
+    sed -i '/buster-updates/d' /etc/apt/sources.list
+
+# Install system dependencies for OpenCV and PaddleOCR
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install additional dependencies we need
 # Using compatible versions to avoid typing-extensions conflict
 RUN pip install --no-cache-dir \
@@ -15,7 +34,12 @@ RUN pip install --no-cache-dir \
     opencv-python-headless==4.8.1.78 \
     mtcnn==0.1.1 \
     tensorflow-cpu==2.13.0 \
-    keras==2.13.1
+    keras==2.13.1 \
+    paddlepaddle \
+    paddleocr==2.7.3
+
+# Create directory for PaddleOCR models with proper permissions
+RUN mkdir -p /app/.paddleocr && chmod -R 777 /app/.paddleocr
 
 # Copy application code
 COPY app.py .

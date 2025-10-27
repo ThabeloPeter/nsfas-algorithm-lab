@@ -13,6 +13,7 @@ export default function FaceExtractionTool() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [extractionData, setExtractionData] = useState(null);
+  const [ocrData, setOcrData] = useState(null); // OCR extracted ID fields
   const [stream, setStream] = useState(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [lightingWarning, setLightingWarning] = useState(false);
@@ -356,8 +357,12 @@ export default function FaceExtractionTool() {
         allFaces: result.metadata.all_faces
       });
 
+      // Store OCR data
+      setOcrData(result.ocrData);
+
       setStep('result');
       console.log('✅ Face extraction complete!');
+      console.log('📝 OCR Data:', result.ocrData);
 
     } catch (err) {
       console.error('❌ Error:', err);
@@ -375,6 +380,7 @@ export default function FaceExtractionTool() {
     setCapturedImage(null);
     setExtractedFaceUrl(null);
     setExtractionData(null);
+    setOcrData(null);
     setError(null);
     setStep('camera');
     setTimeout(startCamera, 100);
@@ -386,6 +392,7 @@ export default function FaceExtractionTool() {
     setCapturedImage(null);
     setExtractedFaceUrl(null);
     setExtractionData(null);
+    setOcrData(null);
     setError(null);
     setIdType(null);
     setStep('select');
@@ -560,9 +567,7 @@ export default function FaceExtractionTool() {
               className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors overflow-hidden">
-                  <img src="/images/smart-id.jpg" alt="Smart ID" className="w-full h-full object-contain p-1" />
-                </div>
+                <img src="/images/smart-id.jpg" alt="Smart ID" className="w-28 h-20 rounded-[24px] object-contain flex-shrink-0 shadow-md group-hover:scale-105 group-hover:shadow-lg transition-all duration-200 p-2" />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Smart ID Card</h3>
                   <p className="text-sm text-gray-600 dark:text-white/60 font-light">Card-style ID with photo on the front</p>
@@ -575,9 +580,7 @@ export default function FaceExtractionTool() {
               className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors overflow-hidden">
-                  <img src="/images/green-id.jpg" alt="Green ID" className="w-full h-full object-contain p-1" />
-                </div>
+                <img src="/images/green-id.jpg" alt="Green ID" className="w-28 h-20 rounded-[20px] object-contain flex-shrink-0 shadow-md group-hover:scale-105 group-hover:shadow-lg transition-all duration-200 p-2" />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Green ID Book</h3>
                   <p className="text-sm text-gray-600 dark:text-white/60 font-light">Book-style ID with photo on inside page</p>
@@ -848,6 +851,79 @@ export default function FaceExtractionTool() {
                       <span className="text-gray-600 dark:text-white/60">Position Score:</span>
                       <span className="text-gray-900 dark:text-white font-semibold">{extractionData.positionScore}%</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* OCR Extracted ID Details */}
+              {ocrData && ocrData.success && (
+                <div className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">ID Details (OCR)</h4>
+                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+                      {ocrData.fieldsExtracted}/{ocrData.totalFields} Fields
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {Object.entries(ocrData.fields).map(([key, field]) => {
+                      const displayName = key === 'idNumber' ? 'ID Number' :
+                                        key === 'countryOfBirth' ? 'Country of Birth' :
+                                        key === 'dateIssued' ? 'Date Issued' :
+                                        key === 'placeOfBirth' ? 'Place of Birth' :
+                                        key.charAt(0).toUpperCase() + key.slice(1);
+                      
+                      const statusIcon = field.status === 'success' ? '✓' :
+                                        field.status === 'partial' ? '⚠' : '✗';
+                      
+                      const statusColor = field.status === 'success' ? 'text-green-400' :
+                                         field.status === 'partial' ? 'text-yellow-400' :
+                                         'text-gray-500 dark:text-white/30';
+
+                      return (
+                        <div key={key} className="bg-gray-50 dark:bg-white/5 p-3 rounded-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs text-gray-500 dark:text-white/50">{displayName}</p>
+                            <span className={`text-sm font-semibold ${statusColor}`}>{statusIcon}</span>
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {field.value || (
+                              <span className="text-gray-400 dark:text-white/40 italic">
+                                {field.status === 'not_detected' ? 'Not detected' : 'Unable to read'}
+                              </span>
+                            )}
+                          </p>
+                          {field.confidence > 0 && (
+                            <p className="text-xs text-gray-400 dark:text-white/40 mt-1">
+                              Confidence: {field.confidence}%
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Overall OCR Confidence */}
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500 dark:text-white/50">Overall OCR Confidence</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{ocrData.confidence}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* OCR Failed/Partial Message */}
+              {ocrData && !ocrData.success && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-white mb-1">OCR Extraction Limited</p>
+                      <p className="text-xs text-white/60 font-light">
+                        {ocrData.message || 'Unable to extract all ID details. The face was successfully extracted.'}
+                      </p>
                     </div>
                   </div>
                 </div>

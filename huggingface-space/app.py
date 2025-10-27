@@ -7,10 +7,12 @@ from PIL import Image
 import io
 import base64
 import fitz  # PyMuPDF
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 import logging
 from mtcnn import MTCNN
 import face_recognition
+from paddleocr import PaddleOCR
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +36,25 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to initialize MTCNN: {str(e)}")
     raise RuntimeError("Failed to load MTCNN model")
+
+# Initialize PaddleOCR
+try:
+    # Set model directory to writable location in /app
+    paddleocr_home = '/app/.paddleocr'
+    
+    ocr = PaddleOCR(
+        use_angle_cls=True, 
+        lang='en', 
+        use_gpu=False, 
+        show_log=False,
+        rec_model_dir=f'{paddleocr_home}/rec',
+        det_model_dir=f'{paddleocr_home}/det',
+        cls_model_dir=f'{paddleocr_home}/cls'
+    )
+    logger.info("✅ PaddleOCR initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize PaddleOCR: {str(e)}")
+    raise RuntimeError("Failed to load PaddleOCR model")
 
 # Keep OpenCV as fallback for eye validation
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -308,6 +329,275 @@ def image_to_base64(image: np.ndarray) -> str:
     
     return f"data:image/jpeg;base64,{img_base64}"
 
+def preprocess_for_ocr(image: np.ndarray) -> np.ndarray:
+    """Preprocess image for better OCR accuracy."""
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Apply denoising
+    denoised = cv2.fastNlMeansDenoising(gray)
+    
+    # Apply adaptive thresholding
+    thresh = cv2.adaptiveThreshold(
+        denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+    )
+    
+    # Convert back to BGR for PaddleOCR
+    processed = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+    
+    return processed
+
+def extract_sa_id_number(text: str) -> Optional[str]:
+    """Extract South African ID number (13 digits)."""
+    # Pattern: YYMMDD SSSS C AZ (13 digits total)
+    pattern = r'\b(\d{2})(\d{2})(\d{2})(\d{4})(\d)(\d)(\d)\b'
+    matches = re.findall(pattern, text.replace(' ', '').replace('-', ''))
+    
+    if matches:
+        id_number = ''.join(matches[0])
+        # Basic validation: first 6 digits should be valid date
+        try:
+            yy, mm, dd = matches[0][0], matches[0][1], matches[0][2]
+            if 1 <= int(mm) <= 12 and 1 <= int(dd) <= 31:
+                return id_number
+        except:
+            pass
+    
+    return None
+
+def extract_text_with_ocr(image: np.ndarray) -> Tuple[List[Tuple], str]:
+    """
+    Extract text from image using PaddleOCR.
+    Returns: (list of (text, confidence, box), raw_text_string)
+    """
+    try:
+        # Run OCR
+        result = ocr.ocr(image, cls=True)
+        
+        if not result or not result[0]:
+            return [], ""
+        
+        # Extract text and confidence
+        extracted_data = []
+        raw_text_lines = []
+        
+        for line in result[0]:
+            box = line[0]  # Coordinates
+            text_info = line[1]  # (text, confidence)
+            text = text_info[0].strip()
+            confidence = text_info[1]
+            
+            if confidence > 0.5:  # Only include confident results
+                extracted_data.append((text, confidence, box))
+                raw_text_lines.append(text)
+        
+        raw_text = ' '.join(raw_text_lines)
+        logger.info(f"📝 OCR extracted {len(extracted_data)} text elements")
+        
+        return extracted_data, raw_text
+        
+    except Exception as e:
+        logger.error(f"OCR error: {str(e)}")
+        return [], ""
+
+def parse_smart_id_card(ocr_data: List[tuple], raw_text: str) -> Dict[str, Any]:
+    """
+    Parse Smart ID Card fields.
+    Expected fields: Surname, Names, ID Number, Sex, Country of Birth, Status
+    """
+    result = {
+        'surname': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'names': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'idNumber': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'sex': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'countryOfBirth': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'status': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+    }
+    
+    # Extract ID number first (most reliable)
+    id_number = extract_sa_id_number(raw_text)
+    if id_number:
+        result['idNumber'] = {'value': id_number, 'confidence': 95, 'status': 'success'}
+        # Extract sex from ID number (digit 7)
+        sex_digit = int(id_number[6])
+        sex = 'M' if sex_digit >= 5 else 'F'
+        result['sex'] = {'value': sex, 'confidence': 95, 'status': 'success'}
+    
+    # Keywords for field detection
+    surname_keywords = ['surname', 'van']
+    names_keywords = ['names', 'name']
+    country_keywords = ['country', 'birth', 'rsa', 'south africa', 'za']
+    status_keywords = ['status', 'citizen', 'citn']
+    
+    for i, (text, confidence, box) in enumerate(ocr_data):
+        text_lower = text.lower()
+        
+        # Surname detection
+        if any(kw in text_lower for kw in surname_keywords) and i + 1 < len(ocr_data):
+            if 'surname' in text_lower:
+                next_text = ocr_data[i + 1][0]
+                result['surname'] = {'value': next_text, 'confidence': int(confidence * 100), 'status': 'success'}
+        
+        # Names detection
+        if any(kw in text_lower for kw in names_keywords) and i + 1 < len(ocr_data):
+            if 'name' in text_lower and 'surname' not in text_lower:
+                next_text = ocr_data[i + 1][0]
+                result['names'] = {'value': next_text, 'confidence': int(confidence * 100), 'status': 'success'}
+        
+        # Country of birth
+        if any(kw in text_lower for kw in country_keywords):
+            if 'rsa' in text_lower or 'south africa' in text_lower or 'za' in text_lower:
+                result['countryOfBirth'] = {'value': 'RSA', 'confidence': int(confidence * 100), 'status': 'success'}
+            elif len(text) == 3 and text.isupper():
+                result['countryOfBirth'] = {'value': text, 'confidence': int(confidence * 100), 'status': 'success'}
+        
+        # Status
+        if any(kw in text_lower for kw in status_keywords):
+            if 'citizen' in text_lower or 'citn' in text_lower:
+                result['status'] = {'value': 'Citizen', 'confidence': int(confidence * 100), 'status': 'success'}
+            else:
+                result['status'] = {'value': text, 'confidence': int(confidence * 100), 'status': 'partial'}
+    
+    return result
+
+def parse_green_id_book(ocr_data: List[tuple], raw_text: str) -> Dict[str, Any]:
+    """
+    Parse Green ID Book fields.
+    Expected fields: ID Number, Surname, Names, Date Issued, Place of Birth
+    """
+    result = {
+        'idNumber': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'surname': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'names': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'dateIssued': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+        'placeOfBirth': {'value': None, 'confidence': 0, 'status': 'not_detected'},
+    }
+    
+    # Extract ID number
+    id_number = extract_sa_id_number(raw_text)
+    if id_number:
+        result['idNumber'] = {'value': id_number, 'confidence': 95, 'status': 'success'}
+    
+    # Keywords
+    surname_keywords = ['surname', 'van']
+    names_keywords = ['names', 'name', 'voorname']
+    date_keywords = ['issued', 'date', 'datum']
+    place_keywords = ['place', 'birth', 'plek', 'geboorte']
+    
+    # Date pattern: DD/MM/YYYY or YYYY/MM/DD
+    date_pattern = r'\b(\d{2}[/-]\d{2}[/-]\d{4}|\d{4}[/-]\d{2}[/-]\d{2})\b'
+    
+    for i, (text, confidence, box) in enumerate(ocr_data):
+        text_lower = text.lower()
+        
+        # Surname
+        if any(kw in text_lower for kw in surname_keywords) and i + 1 < len(ocr_data):
+            next_text = ocr_data[i + 1][0]
+            if not any(char.isdigit() for char in next_text):
+                result['surname'] = {'value': next_text, 'confidence': int(confidence * 100), 'status': 'success'}
+        
+        # Names
+        if any(kw in text_lower for kw in names_keywords) and i + 1 < len(ocr_data):
+            if 'surname' not in text_lower:
+                next_text = ocr_data[i + 1][0]
+                if not any(char.isdigit() for char in next_text):
+                    result['names'] = {'value': next_text, 'confidence': int(confidence * 100), 'status': 'success'}
+        
+        # Date issued
+        if any(kw in text_lower for kw in date_keywords) or re.search(date_pattern, text):
+            date_match = re.search(date_pattern, text)
+            if date_match:
+                result['dateIssued'] = {'value': date_match.group(0), 'confidence': int(confidence * 100), 'status': 'success'}
+            elif i + 1 < len(ocr_data):
+                next_text = ocr_data[i + 1][0]
+                date_match = re.search(date_pattern, next_text)
+                if date_match:
+                    result['dateIssued'] = {'value': date_match.group(0), 'confidence': int(confidence * 100), 'status': 'success'}
+        
+        # Place of birth
+        if any(kw in text_lower for kw in place_keywords) and i + 1 < len(ocr_data):
+            next_text = ocr_data[i + 1][0]
+            if not any(char.isdigit() for char in next_text):
+                result['placeOfBirth'] = {'value': next_text, 'confidence': int(confidence * 100), 'status': 'success'}
+    
+    return result
+
+def extract_id_data_with_ocr(image: np.ndarray, id_type: str) -> Dict[str, Any]:
+    """
+    Main OCR function that extracts data based on ID type.
+    """
+    try:
+        logger.info(f"🔍 Starting OCR for {id_type} ID...")
+        
+        # Preprocess image
+        processed_image = preprocess_for_ocr(image)
+        
+        # Extract text
+        ocr_data, raw_text = extract_text_with_ocr(processed_image)
+        
+        if not ocr_data:
+            logger.warning("⚠️ No text detected by OCR")
+            return {
+                'success': False,
+                'idType': id_type,
+                'fields': {},
+                'rawText': '',
+                'confidence': 0,
+                'message': 'No text detected in the image'
+            }
+        
+        # Parse based on ID type
+        if id_type == 'smart':
+            fields = parse_smart_id_card(ocr_data, raw_text)
+        elif id_type == 'green':
+            fields = parse_green_id_book(ocr_data, raw_text)
+        else:
+            # Try both and see which one finds more fields
+            smart_fields = parse_smart_id_card(ocr_data, raw_text)
+            green_fields = parse_green_id_book(ocr_data, raw_text)
+            
+            # Count successful extractions
+            smart_count = sum(1 for f in smart_fields.values() if f['status'] == 'success')
+            green_count = sum(1 for f in green_fields.values() if f['status'] == 'success')
+            
+            if smart_count >= green_count:
+                fields = smart_fields
+                id_type = 'smart'
+            else:
+                fields = green_fields
+                id_type = 'green'
+        
+        # Calculate overall confidence
+        confidences = [f['confidence'] for f in fields.values() if f['confidence'] > 0]
+        overall_confidence = sum(confidences) / len(confidences) if confidences else 0
+        
+        # Count field statuses
+        success_count = sum(1 for f in fields.values() if f['status'] == 'success')
+        total_fields = len(fields)
+        
+        logger.info(f"✅ OCR complete: {success_count}/{total_fields} fields extracted")
+        
+        return {
+            'success': True,
+            'idType': id_type,
+            'fields': fields,
+            'rawText': raw_text,
+            'confidence': round(overall_confidence, 1),
+            'fieldsExtracted': success_count,
+            'totalFields': total_fields
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ OCR extraction error: {str(e)}")
+        return {
+            'success': False,
+            'idType': id_type,
+            'fields': {},
+            'rawText': '',
+            'confidence': 0,
+            'message': f'OCR failed: {str(e)}'
+        }
+
 @app.get("/")
 async def root():
     """Health check endpoint."""
@@ -403,6 +693,10 @@ async def extract_face(
         face_image = extract_face_region(image, original_box, padding_percent=0.3)
         face_base64 = image_to_base64(face_image)
         
+        # Run OCR extraction on the original image
+        logger.info("🔍 Starting OCR extraction...")
+        ocr_result = extract_id_data_with_ocr(image, id_type)
+        
         # Prepare metadata
         metadata = {
             'total_faces': len(faces),
@@ -426,12 +720,13 @@ async def extract_face(
             ]
         }
         
-        logger.info(f"✅ Success! Confidence: {metadata['confidence']}%")
+        logger.info(f"✅ Success! Face confidence: {metadata['confidence']}%, OCR fields: {ocr_result.get('fieldsExtracted', 0)}/{ocr_result.get('totalFields', 0)}")
         
         return JSONResponse(content={
             'success': True,
             'face_image': face_base64,
-            'metadata': metadata
+            'metadata': metadata,
+            'ocr_data': ocr_result
         })
         
     except HTTPException:
