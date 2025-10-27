@@ -561,7 +561,7 @@ export default function FaceExtractionTool() {
             >
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors overflow-hidden">
-                  <img src="/images/smart-id.jpg" alt="Smart ID" className="w-full h-full object-cover" />
+                  <img src="/images/smart-id.jpg" alt="Smart ID" className="w-full h-full object-contain p-1" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Smart ID Card</h3>
@@ -576,7 +576,7 @@ export default function FaceExtractionTool() {
             >
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors overflow-hidden">
-                  <img src="/images/green-id.jpg" alt="Green ID" className="w-full h-full object-cover" />
+                  <img src="/images/green-id.jpg" alt="Green ID" className="w-full h-full object-contain p-1" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Green ID Book</h3>
