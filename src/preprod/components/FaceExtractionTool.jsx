@@ -560,8 +560,8 @@ export default function FaceExtractionTool() {
               className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors">
-                  <CreditCard className="w-6 h-6 text-blue-600 dark:text-white" />
+                <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors overflow-hidden">
+                  <img src="/images/smart-id.jpg" alt="Smart ID" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Smart ID Card</h3>
@@ -575,8 +575,8 @@ export default function FaceExtractionTool() {
               className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors">
-                  <BookOpen className="w-6 h-6 text-blue-600 dark:text-white" />
+                <div className="w-12 h-12 bg-blue-100 dark:bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-white/20 transition-colors overflow-hidden">
+                  <img src="/images/green-id.jpg" alt="Green ID" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Green ID Book</h3>
