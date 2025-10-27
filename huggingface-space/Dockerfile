@@ -41,8 +41,12 @@ RUN pip install --no-cache-dir \
 # Create directory for PaddleOCR models with proper permissions
 RUN mkdir -p /app/.paddleocr && chmod -R 777 /app/.paddleocr
 
-# Copy application code
+# Copy application code and modules
 COPY app.py .
+COPY validators.py .
+COPY ocr_extraction.py .
+COPY face_extraction.py .
+COPY image_processing.py .
 
 # Expose port 7860 (HuggingFace Spaces default)
 EXPOSE 7860
