@@ -567,7 +567,9 @@ export default function FaceExtractionTool() {
               className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <img src="/images/smart-id.jpg" alt="Smart ID" className="w-28 h-20 rounded-[24px] object-contain flex-shrink-0 shadow-md group-hover:scale-105 group-hover:shadow-lg transition-all duration-200 p-2" />
+                <div className="w-16 h-16 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-200">
+                  <CreditCard className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Smart ID Card</h3>
                   <p className="text-sm text-gray-600 dark:text-white/60 font-light">Card-style ID with photo on the front</p>
@@ -580,7 +582,9 @@ export default function FaceExtractionTool() {
               className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <img src="/images/green-id.jpg" alt="Green ID" className="w-28 h-20 rounded-[20px] object-contain flex-shrink-0 shadow-md group-hover:scale-105 group-hover:shadow-lg transition-all duration-200 p-2" />
+                <div className="w-16 h-16 rounded-xl bg-green-100 dark:bg-green-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-200">
+                  <BookOpen className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Green ID Book</h3>
                   <p className="text-sm text-gray-600 dark:text-white/60 font-light">Book-style ID with photo on inside page</p>
