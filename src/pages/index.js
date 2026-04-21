@@ -69,8 +69,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col items-start gap-4 lg:items-end">
-              <ThemeToggle />
-              <div className="grid gap-3 sm:grid-cols-3 lg:w-[460px]">
+              <div className="hidden gap-3 sm:grid-cols-3 lg:grid lg:w-[460px]">
                 {[
                   { label: 'Capture', value: 'Guided' },
                   { label: 'Extraction', value: 'Automated' },
@@ -91,10 +90,13 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+          <div className="absolute right-4 top-4 z-30">
+            <ThemeToggle />
+          </div>
         </section>
 
         <section className="relative mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-10">
-          <div className="mb-6 grid gap-4 md:grid-cols-3">
+          <div className="mb-6 hidden gap-4 md:grid md:grid-cols-3">
             {[
               {
                 title: 'Document capture',

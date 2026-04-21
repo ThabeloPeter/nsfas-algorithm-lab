@@ -604,15 +604,15 @@ export default function FaceExtractionTool() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="space-y-4"
+            className={isMobile ? "fixed inset-0 z-50 bg-white" : "space-y-4"}
           >
-            <div className="relative rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+            <div className={isMobile ? "relative h-full w-full overflow-hidden bg-white" : "relative rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)]"}>
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="absolute inset-0 h-full w-full object-cover"
+                className={isMobile ? "absolute inset-0 h-full w-full object-cover" : "absolute inset-0 h-full w-full object-cover"}
               />
               
               {/* Camera Guide Overlay - Different dimensions for each ID type */}
@@ -755,7 +755,7 @@ export default function FaceExtractionTool() {
             </div>
 
             {/* Capture Button */}
-            <div className="flex space-x-3">
+            <div className={isMobile ? "fixed bottom-4 left-4 right-4 z-50 space-y-3" : "flex space-x-3"}>
               <button
                 onClick={capturePhoto}
                 disabled={!stream}
