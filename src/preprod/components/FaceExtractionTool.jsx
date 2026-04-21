@@ -517,18 +517,26 @@ export default function FaceExtractionTool() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        
+    <div className="relative text-gray-900 dark:text-white transition-colors" style={{ fontFamily: 'Manrope, sans-serif' }}>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-sky-400/10 blur-3xl dark:bg-cyan-400/10" />
+        <div className="absolute right-[-6rem] top-72 h-80 w-80 rounded-full bg-indigo-400/10 blur-3xl dark:bg-blue-500/10" />
+      </div>
+
+      <div className="relative mx-auto max-w-3xl px-4 py-6 md:py-10">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
+        <div className="mb-8 rounded-[2rem] border border-slate-200/80 bg-white/80 p-6 text-center shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+          <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Secure identity workflow
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-950 md:text-4xl dark:text-white">
             Biometrics Verification
           </h1>
-          <p className="text-gray-600 dark:text-white/60 text-sm font-light">
-            Capture an ID document, extract the face, and verify identity
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600 md:text-base dark:text-white/60">
+            Capture an ID document, extract the face, and verify identity through a guided, polished flow.
           </p>
-          <div className="h-0.5 w-24 bg-gradient-to-r from-blue-600 dark:from-white to-transparent mt-4 mx-auto"></div>
+          <div className="mx-auto mt-5 h-px w-28 bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-white/30"></div>
         </div>
 
         {/* Error */}
