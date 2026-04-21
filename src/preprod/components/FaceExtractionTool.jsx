@@ -523,10 +523,10 @@ export default function FaceExtractionTool() {
         {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
-            Face Extraction
+            Biometrics Verification
           </h1>
           <p className="text-gray-600 dark:text-white/60 text-sm font-light">
-            Capture your ID to extract the face photo
+            Capture an ID document, extract the face, and verify identity
           </p>
           <div className="h-0.5 w-24 bg-gradient-to-r from-blue-600 dark:from-white to-transparent mt-4 mx-auto"></div>
         </div>
