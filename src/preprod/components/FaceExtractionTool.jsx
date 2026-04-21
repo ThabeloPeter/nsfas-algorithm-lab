@@ -669,23 +669,33 @@ export default function FaceExtractionTool() {
               </div>
 
               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none px-4">
-                <div className="w-[92%] max-w-[34rem] rounded-[1.5rem] border border-sky-400/70 bg-white p-3 shadow-[0_0_0_9999px_rgba(255,255,255,0.86)] backdrop-blur-[2px]">
-                  <div className="relative aspect-[1.58/1] overflow-hidden rounded-[1rem] border-2 border-sky-500 bg-transparent shadow-[0_0_0_6px_rgba(14,165,233,0.08)]">
-                    <div className="absolute inset-0 border border-white/35" />
+                <div className="w-[92%] max-w-[34rem] rounded-[1.5rem] border border-slate-200/80 bg-white/55 p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+                  <div className="relative aspect-[1.58/1] overflow-hidden rounded-[1rem] border border-sky-500/70 bg-gradient-to-br from-slate-50 to-slate-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]">
+                    <div className="absolute inset-0 opacity-70" style={{ backgroundImage: 'linear-gradient(rgba(148,163,184,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.2) 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+                    <div className="absolute inset-x-0 top-4 flex justify-center">
+                      <div className="rounded-full bg-white/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-700 shadow-sm">
+                        Smart ID capture area
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-[62%] rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
+                        <div className="mx-auto h-6 w-6 rounded-full bg-slate-200" />
+                        <div className="mt-4 space-y-2">
+                          <div className="h-2 w-3/4 rounded-full bg-slate-200" />
+                          <div className="h-2 w-1/2 rounded-full bg-slate-200" />
+                          <div className="h-2 w-5/6 rounded-full bg-slate-200" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute inset-x-0 bottom-4 flex justify-center">
+                      <div className="rounded-full bg-slate-950/90 px-3 py-1 text-[10px] font-medium text-white shadow-sm">
+                        Keep the Smart ID fully inside the frame
+                      </div>
+                    </div>
                     <div className="absolute left-3 top-3 h-6 w-6 rounded-tl-lg border-l-2 border-t-2 border-sky-500" />
                     <div className="absolute right-3 top-3 h-6 w-6 rounded-tr-lg border-r-2 border-t-2 border-sky-500" />
                     <div className="absolute bottom-3 left-3 h-6 w-6 rounded-bl-lg border-b-2 border-l-2 border-sky-500" />
                     <div className="absolute bottom-3 right-3 h-6 w-6 rounded-br-lg border-b-2 border-r-2 border-sky-500" />
-                    <div className="absolute inset-x-0 top-3 flex justify-center">
-                      <div className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-700 shadow-sm">
-                        Smart ID capture area
-                      </div>
-                    </div>
-                    <div className="absolute inset-x-0 bottom-3 flex justify-center">
-                      <div className="rounded-full bg-slate-950/80 px-3 py-1 text-[10px] font-medium text-white shadow-sm">
-                        Keep the ID fully inside the frame
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -701,7 +711,7 @@ export default function FaceExtractionTool() {
                       exit={{ opacity: 0, y: -10 }}
                       className="text-center"
                     >
-                      <div className="inline-block rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-lg backdrop-blur-md">
+                      <div className="inline-block rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-md backdrop-blur-md">
                         <p className={`text-xs font-semibold ${isAligned ? 'text-emerald-700' : 'text-slate-700'}`}>
                           {feedback}
                         </p>
