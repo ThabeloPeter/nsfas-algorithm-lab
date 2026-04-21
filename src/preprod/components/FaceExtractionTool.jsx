@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Camera, Loader2, AlertCircle, CheckCircle, RefreshCw, Download, CreditCard, BookOpen, User, Shield } from 'lucide-react';
+import { Camera, Loader2, AlertCircle, CheckCircle, RefreshCw, Download, CreditCard, User, Shield, Sparkles, BadgeInfo } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { extractFaceFromDocument, compareFaces, base64ToBlob } from '@/lib/faceExtractionApi';
 
 export default function FaceExtractionTool() {
   const [step, setStep] = useState('select'); // select, camera, processing, result, selfie-prompt, selfie-camera, comparing, verification-result
-  const [idType, setIdType] = useState(null); // 'smart' or 'green'
+  const [idType, setIdType] = useState(null); // 'smart'
   const [capturedImage, setCapturedImage] = useState(null);
   const [extractedFaceUrl, setExtractedFaceUrl] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -572,33 +572,30 @@ export default function FaceExtractionTool() {
 
             <button
               onClick={() => selectIdType('smart')}
-              className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
+              className="w-full bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border border-slate-200 dark:border-white/20 hover:border-sky-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
             >
               <div className="flex items-start space-x-4">
-                <div className="w-16 h-16 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-200">
-                  <CreditCard className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                <div className="w-16 h-16 rounded-xl bg-sky-100 dark:bg-sky-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-200">
+                  <CreditCard className="w-8 h-8 text-sky-600 dark:text-sky-300" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Smart ID Card</h3>
-                  <p className="text-sm text-gray-600 dark:text-white/60 font-light">Card-style ID with photo on the front</p>
+                  <p className="text-sm text-gray-600 dark:text-white/60 font-light">Card-style ID with the photo on the front</p>
                       </div>
                     </div>
             </button>
 
-            <button
-              onClick={() => selectIdType('green')}
-              className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
-            >
-              <div className="flex items-start space-x-4">
-                <div className="w-16 h-16 rounded-xl bg-green-100 dark:bg-green-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-200">
-                  <BookOpen className="w-8 h-8 text-green-600 dark:text-green-400" />
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-left shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10">
+              <div className="flex items-start space-x-3">
+                <BadgeInfo className="mt-0.5 h-5 w-5 text-amber-600 dark:text-amber-300" />
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Older green ID books</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-white/60">
+                    These will move to manual review because the print quality, wear, and page condition can make automated verification unreliable.
+                  </p>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Green ID Book</h3>
-                  <p className="text-sm text-gray-600 dark:text-white/60 font-light">Book-style ID with photo on inside page</p>
-                  </div>
-                </div>
-            </button>
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -607,21 +604,15 @@ export default function FaceExtractionTool() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className={isMobile ? "fixed inset-0 z-50 bg-white dark:bg-black" : "space-y-4"}
+            className="space-y-4"
           >
-            <div className={isMobile 
-              ? "fixed inset-0 w-full h-full" 
-              : "relative bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden border border-gray-300 dark:border-white/10"
-            }>
+            <div className="relative rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className={isMobile 
-                  ? "absolute inset-0 w-full h-full object-cover" 
-                  : "w-full h-auto"
-                }
+                className="absolute inset-0 h-full w-full object-cover"
               />
               
               {/* Camera Guide Overlay - Different dimensions for each ID type */}
@@ -677,8 +668,30 @@ export default function FaceExtractionTool() {
                 </svg>
               </div>
 
+              <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none px-4">
+                <div className="w-[92%] max-w-[34rem] rounded-[1.5rem] border border-sky-400/70 bg-white p-3 shadow-[0_0_0_9999px_rgba(255,255,255,0.86)] backdrop-blur-[2px]">
+                  <div className="relative aspect-[1.58/1] overflow-hidden rounded-[1rem] border-2 border-sky-500 bg-transparent shadow-[0_0_0_6px_rgba(14,165,233,0.08)]">
+                    <div className="absolute inset-0 border border-white/35" />
+                    <div className="absolute left-3 top-3 h-6 w-6 rounded-tl-lg border-l-2 border-t-2 border-sky-500" />
+                    <div className="absolute right-3 top-3 h-6 w-6 rounded-tr-lg border-r-2 border-t-2 border-sky-500" />
+                    <div className="absolute bottom-3 left-3 h-6 w-6 rounded-bl-lg border-b-2 border-l-2 border-sky-500" />
+                    <div className="absolute bottom-3 right-3 h-6 w-6 rounded-br-lg border-b-2 border-r-2 border-sky-500" />
+                    <div className="absolute inset-x-0 top-3 flex justify-center">
+                      <div className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-700 shadow-sm">
+                        Smart ID capture area
+                      </div>
+                    </div>
+                    <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                      <div className="rounded-full bg-slate-950/80 px-3 py-1 text-[10px] font-medium text-white shadow-sm">
+                        Keep the ID fully inside the frame
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Progressive Feedback Overlay */}
-              <div className="absolute top-4 left-0 right-0 px-4 space-y-2 z-30">
+              <div className="absolute top-4 left-0 right-0 z-20 px-4 space-y-2">
                 <AnimatePresence mode="wait">
                   {feedback && (
                     <motion.div
@@ -688,19 +701,8 @@ export default function FaceExtractionTool() {
                       exit={{ opacity: 0, y: -10 }}
                       className="text-center"
                     >
-                      <div className={`inline-block backdrop-blur-sm px-4 py-2 rounded-full ${
-                        isAligned 
-                          ? 'bg-green-500/90' 
-                          : (feedback.includes('dark') || feedback.includes('bright') || feedback.includes('blurry'))
-                            ? 'bg-yellow-500/90'
-                            : 'bg-black/70'
-                      }`}>
-                        <p className={`text-xs font-semibold ${
-                          isAligned ? 'text-white' : 
-                          (feedback.includes('dark') || feedback.includes('bright') || feedback.includes('blurry'))
-                            ? 'text-black'
-                            : 'text-white'
-                        }`}>
+                      <div className="inline-block rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-lg backdrop-blur-md">
+                        <p className={`text-xs font-semibold ${isAligned ? 'text-emerald-700' : 'text-slate-700'}`}>
                           {feedback}
                         </p>
                       </div>
@@ -714,16 +716,16 @@ export default function FaceExtractionTool() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="absolute inset-0 border-4 border-green-500 rounded-2xl pointer-events-none z-20"
+                  className="absolute inset-0 z-20 pointer-events-none rounded-2xl ring-4 ring-emerald-400/70 ring-inset"
                 />
               )}
 
               {/* Close Button (Mobile) */}
               {isMobile && (
-                <div className="fixed top-4 left-4 z-50">
+                <div className="absolute top-4 left-4 z-30">
                   <button
                     onClick={handleReset}
-                    className="p-3 rounded-full bg-black/70 text-white hover:bg-black/80 backdrop-blur-sm transition-all"
+                    className="p-3 rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition-all hover:bg-slate-50"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -734,15 +736,15 @@ export default function FaceExtractionTool() {
 
               {/* Flash Toggle Button */}
               <div className={isMobile 
-                ? "fixed bottom-24 right-4 z-50" 
+                ? "absolute bottom-24 right-4 z-30" 
                 : "absolute bottom-4 right-4"
               }>
                 <button
                   onClick={toggleFlash}
                   className={`p-3 rounded-full backdrop-blur-sm transition-all ${
                     flashEnabled 
-                      ? 'bg-yellow-500 text-black' 
-                      : 'bg-black/70 text-white hover:bg-black/80'
+                      ? 'border border-amber-300 bg-amber-400 text-black' 
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -753,26 +755,23 @@ export default function FaceExtractionTool() {
             </div>
 
             {/* Capture Button */}
-            <div className={isMobile
-              ? "fixed bottom-4 left-4 right-4 z-50 flex space-x-3"
-              : "flex space-x-3"
-            }>
+            <div className="flex space-x-3">
               <button
                 onClick={capturePhoto}
                 disabled={!stream}
-                className="flex-1 bg-white text-black py-4 rounded-xl font-semibold hover:bg-white/90 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-xl bg-slate-950 py-4 font-semibold text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Camera className="w-5 h-5" />
-                <span>Capture Photo</span>
+                <span className="inline-flex items-center justify-center space-x-2">
+                  <Camera className="w-5 h-5" />
+                  <span>Capture Photo</span>
+                </span>
               </button>
-              {!isMobile && (
-                <button
-                  onClick={handleReset}
-                  className="px-6 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all"
-                >
-                  Cancel
-                </button>
-              )}
+              <button
+                onClick={handleReset}
+                className="rounded-xl border border-slate-200 bg-white px-6 py-4 font-semibold text-slate-700 transition-all hover:bg-slate-50"
+              >
+                Cancel
+              </button>
             </div>
 
             {/* Tips */}

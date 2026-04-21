@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const FaceExtractionTool = dynamic(() => import('@/preprod/components/FaceExtractionTool'), {
   ssr: false
@@ -67,24 +68,27 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3 lg:w-[460px]">
-              {[
-                { label: 'Capture', value: 'Guided' },
-                { label: 'Extraction', value: 'Automated' },
-                { label: 'Verification', value: 'Selfie match' }
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5"
-                >
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-white/45">
-                    {item.label}
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
-                    {item.value}
-                  </p>
-                </div>
-              ))}
+            <div className="flex flex-col items-start gap-4 lg:items-end">
+              <ThemeToggle />
+              <div className="grid gap-3 sm:grid-cols-3 lg:w-[460px]">
+                {[
+                  { label: 'Capture', value: 'Guided' },
+                  { label: 'Extraction', value: 'Automated' },
+                  { label: 'Verification', value: 'Selfie match' }
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5"
+                  >
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-white/45">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
