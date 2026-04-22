@@ -16,6 +16,7 @@ export default function FaceExtractionTool() {
   const [ocrData, setOcrData] = useState(null); // OCR extracted ID fields
   const [stream, setStream] = useState(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
   const [lightingWarning, setLightingWarning] = useState(false);
   const [frameQuality, setFrameQuality] = useState(null); // Real-time frame analysis
   const [feedback, setFeedback] = useState(''); // Progressive feedback message
@@ -55,6 +56,11 @@ export default function FaceExtractionTool() {
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
+        setFlashEnabled(false);
+
+        const track = mediaStream.getVideoTracks()[0];
+        const capabilities = track?.getCapabilities?.() || {};
+        setTorchSupported(Boolean(capabilities.torch));
         
         // Start checking lighting and frame quality after video loads
         videoRef.current.onloadedmetadata = () => {
@@ -250,27 +256,27 @@ export default function FaceExtractionTool() {
       console.log('📸 Camera capabilities:', capabilities);
       console.log('🔦 Torch supported:', !!capabilities.torch);
       
-      if (capabilities.torch) {
-        try {
-          const newFlashState = !flashEnabled;
-          console.log(`🔦 Attempting to ${newFlashState ? 'enable' : 'disable'} flash...`);
-          
-          await track.applyConstraints({
-            advanced: [{ torch: newFlashState }]
-          });
-          
-          setFlashEnabled(newFlashState);
-          triggerHaptic('light');
-          console.log(`✅ Flash ${newFlashState ? 'enabled' : 'disabled'}`);
-          
-        } catch (err) {
-          console.error('❌ Flash constraint error:', err);
-          setError(`Flash error: ${err.message || 'Unable to control flash'}`);
-        }
-      } else {
+      if (!capabilities.torch) {
         console.log('❌ Torch not supported on this device/browser');
         setError('Flash not available. Requirements: Mobile device with back camera on HTTPS.');
+        return;
       }
+
+      const newFlashState = !flashEnabled;
+      console.log(`🔦 Attempting to ${newFlashState ? 'enable' : 'disable'} flash...`);
+      
+      await track.applyConstraints({
+        advanced: [{ torch: newFlashState }]
+      });
+      
+      const settings = track.getSettings?.() || {};
+      if (typeof settings.torch === 'boolean' && settings.torch !== newFlashState) {
+        throw new Error('Camera did not confirm torch state.');
+      }
+      
+      setFlashEnabled(newFlashState);
+      triggerHaptic('light');
+      console.log(`✅ Flash ${newFlashState ? 'enabled' : 'disabled'}`);
     } catch (err) {
       console.error('❌ Flash capability check error:', err);
       setError('Unable to access camera capabilities.');
@@ -286,6 +292,7 @@ export default function FaceExtractionTool() {
     stopLightingCheck();
     stopFrameAnalysis();
     setFlashEnabled(false);
+    setTorchSupported(false);
     setLightingWarning(false);
   };
 
@@ -407,6 +414,8 @@ export default function FaceExtractionTool() {
   const startSelfieCamera = () => {
     setStep('selfie-camera');
     setError(null);
+    setTorchSupported(false);
+    setFlashEnabled(false);
     setTimeout(async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -726,24 +735,28 @@ export default function FaceExtractionTool() {
           )}
 
               {/* Flash Toggle Button */}
-              <div className="absolute top-4 right-4 z-40">
-                <button
-                  onClick={toggleFlash}
-                  className={`p-3 rounded-full backdrop-blur-sm transition-all ${
-                    flashEnabled 
-                      ? 'border border-amber-300 bg-amber-400 text-black' 
-                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
-                  </svg>
-                </button>
-              </div>
+              {torchSupported && (
+                <div className="absolute top-4 right-4 z-40">
+                  <button
+                    onClick={toggleFlash}
+                    className={`p-3 rounded-full backdrop-blur-sm transition-all ${
+                      flashEnabled 
+                        ? 'border border-amber-300 bg-amber-400 text-black' 
+                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
+                    aria-label={flashEnabled ? 'Disable flash' : 'Enable flash'}
+                    title={flashEnabled ? 'Disable flash' : 'Enable flash'}
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Capture Button */}
-            <div className={isMobile ? "fixed bottom-4 left-4 right-4 z-50 grid grid-cols-2 gap-3" : "flex space-x-3"}>
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={capturePhoto}
                 disabled={!stream}
@@ -1048,7 +1061,7 @@ export default function FaceExtractionTool() {
             className={isMobile ? "fixed inset-0 z-50 bg-white dark:bg-black" : "space-y-4"}
           >
             <div className={isMobile 
-              ? "fixed inset-0 w-full h-full" 
+              ? "fixed inset-0 w-full h-full bg-white dark:bg-black" 
               : "relative bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden border border-gray-300 dark:border-white/10"
             }>
               <video
@@ -1056,29 +1069,40 @@ export default function FaceExtractionTool() {
                 autoPlay
                 playsInline
                 muted
-                className={isMobile 
-                  ? "absolute inset-0 w-full h-full object-cover" 
-                  : "w-full h-auto"
-                }
+                className="absolute inset-0 w-full h-full object-cover"
                 style={{ transform: 'scaleX(-1)' }}
               />
               
-              {/* Oval Face Guide for Selfie */}
+              {/* Selfie Face Guide */}
               <div className="absolute inset-0 pointer-events-none" style={{ transform: 'scaleX(-1)' }}>
-                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <defs>
+                    <mask id="selfie-focus-mask">
+                      <rect x="0" y="0" width="100" height="100" fill="white" />
+                      <ellipse cx="50" cy="43" rx="28" ry="36" fill="black" />
+                    </mask>
+                  </defs>
+                  <rect x="0" y="0" width="100" height="100" fill="rgba(8,12,20,0.16)" mask="url(#selfie-focus-mask)" />
                   <ellipse 
                     cx="50" 
-                    cy="45" 
-                    rx="30" 
-                    ry="38"
+                    cy="43" 
+                    rx="28" 
+                    ry="36"
                     fill="none"
-                    stroke="rgba(255,255,255,0.5)"
-                    strokeWidth="0.3"
-                    strokeDasharray="2,2"
+                    stroke="rgba(255,255,255,0.72)"
+                    strokeWidth="0.35"
                   />
-                  {/* Guide text */}
-                  <text x="50" y="90" fontSize="3" fill="white" textAnchor="middle" opacity="0.7">
-                    Center your face in the oval
+                  <ellipse 
+                    cx="50" 
+                    cy="43" 
+                    rx="22" 
+                    ry="30"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.18)"
+                    strokeWidth="0.2"
+                  />
+                  <text x="50" y="90" fontSize="3" fill="white" textAnchor="middle" opacity="0.8">
+                    Center your face inside the frame
                   </text>
                 </svg>
               </div>
@@ -1122,31 +1146,10 @@ export default function FaceExtractionTool() {
                 </div>
               )}
 
-              {/* Flash Toggle Button */}
-              <div className={isMobile 
-                ? "fixed bottom-24 right-4 z-50" 
-                : "absolute bottom-4 right-4"
-              }>
-                <button
-                  onClick={toggleFlash}
-                  className={`p-3 rounded-full backdrop-blur-sm transition-all ${
-                    flashEnabled 
-                      ? 'bg-yellow-500 text-black' 
-                      : 'bg-black/70 text-white hover:bg-black/80'
-                  }`}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </button>
-              </div>
             </div>
 
             {/* Capture Button */}
-            <div className={isMobile
-              ? "fixed bottom-4 left-4 right-4 z-50 flex space-x-3"
-              : "flex space-x-3"
-            }>
+            <div className="fixed bottom-4 left-4 right-4 z-50 grid grid-cols-2 gap-3">
               <button
                 onClick={captureSelfie}
                 disabled={!stream}
@@ -1155,14 +1158,12 @@ export default function FaceExtractionTool() {
                 <Camera className="w-5 h-5" />
                 <span>Capture Selfie</span>
               </button>
-              {!isMobile && (
-                <button
-                  onClick={() => { stopCamera(); setStep('selfie-prompt'); }}
-                  className="px-6 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all"
-                >
-                  Cancel
-                </button>
-              )}
+              <button
+                onClick={() => { stopCamera(); setStep('selfie-prompt'); }}
+                className="rounded-xl border border-white/20 bg-white/10 px-6 py-4 font-semibold text-white transition-all hover:bg-white/20"
+              >
+                Cancel
+              </button>
             </div>
           </motion.div>
         )}
