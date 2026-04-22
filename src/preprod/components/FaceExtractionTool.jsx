@@ -709,7 +709,7 @@ export default function FaceExtractionTool() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-            </div>
+              </div>
 
               {/* Alignment Indicator */}
               {isAligned && (
@@ -731,36 +731,40 @@ export default function FaceExtractionTool() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-            </div>
-          )}
+                </div>
+              )}
 
               {/* Flash Toggle Button */}
-              {torchSupported && (
-                <div className="absolute top-4 right-4 z-40">
+              <div className="absolute top-4 right-4 z-40">
+                {torchSupported ? (
                   <button
                     onClick={toggleFlash}
                     className={`p-3 rounded-full backdrop-blur-sm transition-all ${
-                      flashEnabled 
-                        ? 'border border-amber-300 bg-amber-400 text-black' 
+                      flashEnabled
+                        ? 'border border-amber-300 bg-amber-400 text-black'
                         : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                     aria-label={flashEnabled ? 'Disable flash' : 'Enable flash'}
                     title={flashEnabled ? 'Disable flash' : 'Enable flash'}
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                      <path d="M7 2v11h3v9l7-12h-4l4-8z" />
                     </svg>
                   </button>
-                </div>
-              )}
+                ) : (
+                  <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-md">
+                    Flash unavailable
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Capture Button */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="fixed bottom-4 left-4 right-4 z-50 grid grid-cols-2 gap-3 pb-[env(safe-area-inset-bottom)]">
               <button
                 onClick={capturePhoto}
                 disabled={!stream}
-                className="rounded-xl bg-slate-950 py-4 font-semibold text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-slate-950 py-4 font-semibold text-white shadow-xl transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="inline-flex items-center justify-center space-x-2">
                   <Camera className="w-5 h-5" />
@@ -769,7 +773,7 @@ export default function FaceExtractionTool() {
               </button>
               <button
                 onClick={handleReset}
-                className="rounded-xl border border-slate-200 bg-white px-6 py-4 font-semibold text-slate-700 transition-all hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 bg-white px-6 py-4 font-semibold text-slate-700 shadow-xl transition-all hover:bg-slate-50"
               >
                 Cancel
               </button>
