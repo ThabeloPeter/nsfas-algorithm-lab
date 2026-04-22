@@ -4,11 +4,8 @@
  */
 
 const API_URL = process.env.NEXT_PUBLIC_HF_FACE_API_URL || 'http://localhost:7860';
-const TIMEOUT_MS = 60000; // 60 seconds
+const TIMEOUT_MS = 30000;
 
-/**
- * Create a fetch request with timeout
- */
 const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUT_MS) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -16,7 +13,7 @@ const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUT_MS) => {
   try {
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal
+      signal: controller.signal,
     });
     clearTimeout(timeoutId);
     return response;
@@ -29,6 +26,38 @@ const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUT_MS) => {
   }
 };
 
+const readJsonWithTimeout = async (response, timeout = TIMEOUT_MS) => {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error('The server took too long to finish sending a response.'));
+    }, timeout);
+  });
+
+  try {
+    return await Promise.race([response.json(), timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const readErrorMessage = async (response) => {
+  const jsonClone = response.clone();
+  const textClone = response.clone();
+
+  try {
+    const data = await readJsonWithTimeout(jsonClone, 8000);
+    return data?.detail || data?.error || `Server error: ${response.status}`;
+  } catch {
+    try {
+      const text = await textClone.text();
+      return text?.trim() || `Server error: ${response.status}`;
+    } catch {
+      return `Server error: ${response.status}`;
+    }
+  }
+};
+
 /**
  * Extract face from an ID document (image or PDF)
  * @param {File} file - The ID document file to process
@@ -37,7 +66,6 @@ const fetchWithTimeout = async (url, options = {}, timeout = TIMEOUT_MS) => {
  */
 export const extractFaceFromDocument = async (file, idType = 'full') => {
   try {
-    // Validate file
     if (!file) {
       throw new Error('No file provided');
     }
@@ -47,58 +75,56 @@ export const extractFaceFromDocument = async (file, idType = 'full') => {
       throw new Error('Invalid file type. Please upload JPEG, PNG, or PDF.');
     }
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       throw new Error('File too large. Maximum size is 10MB.');
     }
 
-    // Create form data
     const formData = new FormData();
     formData.append('file', file);
     formData.append('id_type', idType);
 
-    console.log('🚀 Sending request to face extraction API...');
-    console.log('📁 File:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
-    console.log('🎯 ID Type:', idType);
+    console.log('Sending request to face extraction API...');
+    console.log('File:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
+    console.log('ID Type:', idType);
 
-    // Make API request
     const response = await fetchWithTimeout(`${API_URL}/extract-face`, {
       method: 'POST',
       body: formData,
     });
 
-    // Handle response
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.detail || `Server error: ${response.status}`;
+      const errorMessage = await readErrorMessage(response);
       throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    const data = await readJsonWithTimeout(response);
 
     if (!data.success) {
-      throw new Error(data.error || 'Face extraction failed');
+      throw new Error(data.error || data.detail || 'Face extraction failed');
     }
 
-    console.log('✅ Face extraction successful');
-    console.log('📊 Metadata:', data.metadata);
-    console.log('📝 OCR Data:', data.ocr_data);
+    console.log('Face extraction successful');
+    console.log('Metadata:', data.metadata);
+    console.log('OCR Data:', data.ocr_data);
 
     return {
       success: true,
-      faceImage: data.face_image, // Base64 encoded image
+      faceImage: data.face_image,
       metadata: data.metadata,
-      ocrData: data.ocr_data, // OCR extracted fields
+      ocrData: data.ocr_data,
     };
-
   } catch (error) {
-    console.error('❌ Face extraction error:', error);
-    
-    // Provide user-friendly error messages
+    console.error('Face extraction error:', error);
+
+    if (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout')) {
+      throw new Error('The document capture took too long to process. Please try a clearer image or retry.');
+    }
+
     if (error.message.includes('fetch')) {
       throw new Error('Unable to connect to face extraction service. Please check your internet connection.');
     }
-    
+
     if (error.message.includes('No face detected')) {
       throw new Error('No face detected in the document. Please upload a clearer ID photo.');
     }
@@ -115,39 +141,34 @@ export const extractFaceFromDocument = async (file, idType = 'full') => {
  */
 export const compareFaces = async (selfieFile, idPhotoFile) => {
   try {
-    // Validate files
     if (!selfieFile || !idPhotoFile) {
       throw new Error('Both selfie and ID photo are required');
     }
 
-    // Create form data
     const formData = new FormData();
     formData.append('selfie', selfieFile);
     formData.append('id_photo', idPhotoFile);
 
-    console.log('🚀 Sending face comparison request...');
+    console.log('Sending face comparison request...');
 
-    // Make API request
     const response = await fetchWithTimeout(`${API_URL}/compare-faces`, {
       method: 'POST',
       body: formData,
     });
 
-    // Handle response
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.detail || `Server error: ${response.status}`;
+      const errorMessage = await readErrorMessage(response);
       throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    const data = await readJsonWithTimeout(response);
 
     if (!data.success) {
-      throw new Error(data.error || 'Face comparison failed');
+      throw new Error(data.error || data.detail || 'Face comparison failed');
     }
 
-    console.log('✅ Face comparison complete');
-    console.log('🎯 Match:', data.match, '| Confidence:', data.confidence + '%');
+    console.log('Face comparison complete');
+    console.log('Match:', data.match, '| Confidence:', data.confidence + '%');
 
     return {
       success: true,
@@ -156,10 +177,13 @@ export const compareFaces = async (selfieFile, idPhotoFile) => {
       confidence: data.confidence,
       threshold: data.threshold,
     };
-
   } catch (error) {
-    console.error('❌ Face comparison error:', error);
-    
+    console.error('Face comparison error:', error);
+
+    if (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout')) {
+      throw new Error('The selfie comparison took too long to finish. Please try again.');
+    }
+
     if (error.message.includes('fetch')) {
       throw new Error('Unable to connect to face comparison service. Please check your internet connection.');
     }
@@ -195,7 +219,7 @@ export const checkApiHealth = async () => {
   try {
     const response = await fetchWithTimeout(`${API_URL}/`, {
       method: 'GET',
-    }, 5000); // 5 second timeout for health check
+    }, 5000);
 
     if (!response.ok) {
       return { healthy: false, error: `HTTP ${response.status}` };
@@ -203,7 +227,6 @@ export const checkApiHealth = async () => {
 
     const data = await response.json();
     return { healthy: true, ...data };
-
   } catch (error) {
     return { healthy: false, error: error.message };
   }
@@ -215,5 +238,3 @@ export default {
   base64ToBlob,
   checkApiHealth,
 };
-
-

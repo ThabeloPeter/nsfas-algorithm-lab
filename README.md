@@ -1,6 +1,6 @@
 # NSFAS Biometrics Verification
 
-A focused biometrics verification platform for secure identity capture, face extraction, and selfie-to-ID matching. The project is designed to serve as a reusable building block that can plug into larger service journeys.
+A focused biometrics verification platform for secure identity capture, face extraction, and selfie-to-ID matching. The project is designed to serve as a reusable government-ready building block that can plug into larger service journeys.
 
 ## What it does
 
@@ -53,4 +53,4 @@ npm run dev
 
 ## Goal
 
-This repo is now oriented around one product: biometrics verification. The intent is to provide a clean, modular foundation that can integrate with larger service journeys instead of a multi-tool lab.
+This repo is now oriented around one product: biometrics verification. The intent is to provide a clean, modular foundation that government systems can integrate with instead of a multi-tool lab.

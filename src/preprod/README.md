@@ -11,6 +11,7 @@ This directory now holds the biometrics verification experience and its legacy r
 ## Components
 
 - `FaceExtractionTool.jsx` - Camera capture, face extraction, OCR, and selfie verification
+- `PreprodMenu.jsx` - Legacy dashboard component kept for reference
 
 ## Backend
 

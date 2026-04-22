@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Camera, Loader2, AlertCircle, CheckCircle, RefreshCw, Download, CreditCard, User, Shield, Sparkles, BadgeInfo } from 'lucide-react';
+import { Camera, Loader2, AlertCircle, CheckCircle, RefreshCw, Download, CreditCard, BookOpen, User, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { extractFaceFromDocument, compareFaces, base64ToBlob } from '@/lib/faceExtractionApi';
 
 export default function FaceExtractionTool() {
   const [step, setStep] = useState('select'); // select, camera, processing, result, selfie-prompt, selfie-camera, comparing, verification-result
-  const [idType, setIdType] = useState(null); // 'smart'
+  const [idType, setIdType] = useState(null); // 'smart' or 'green'
   const [capturedImage, setCapturedImage] = useState(null);
   const [extractedFaceUrl, setExtractedFaceUrl] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -16,12 +16,12 @@ export default function FaceExtractionTool() {
   const [ocrData, setOcrData] = useState(null); // OCR extracted ID fields
   const [stream, setStream] = useState(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
-  const [torchSupported, setTorchSupported] = useState(false);
   const [lightingWarning, setLightingWarning] = useState(false);
   const [frameQuality, setFrameQuality] = useState(null); // Real-time frame analysis
   const [feedback, setFeedback] = useState(''); // Progressive feedback message
   const [isAligned, setIsAligned] = useState(false); // Whether ID is properly aligned
   const [isMobile, setIsMobile] = useState(false); // Mobile device detection
+  const [captureEffect, setCaptureEffect] = useState(null);
   
   // New states for selfie verification
   const [selfieImage, setSelfieImage] = useState(null);
@@ -42,6 +42,14 @@ export default function FaceExtractionTool() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const getDocumentGuideRect = () => {
+    if (idType === 'smart') {
+      return { x: 0.05, y: 0.30, width: 0.90, height: 0.40 };
+    }
+
+    return { x: 0.20, y: 0.30, width: 0.60, height: 0.40 };
+  };
+
   // Start camera
   const startCamera = async () => {
     try {
@@ -56,11 +64,6 @@ export default function FaceExtractionTool() {
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         setStream(mediaStream);
-        setFlashEnabled(false);
-
-        const track = mediaStream.getVideoTracks()[0];
-        const capabilities = track?.getCapabilities?.() || {};
-        setTorchSupported(Boolean(capabilities.torch));
         
         // Start checking lighting and frame quality after video loads
         videoRef.current.onloadedmetadata = () => {
@@ -256,27 +259,27 @@ export default function FaceExtractionTool() {
       console.log('📸 Camera capabilities:', capabilities);
       console.log('🔦 Torch supported:', !!capabilities.torch);
       
-      if (!capabilities.torch) {
+      if (capabilities.torch) {
+        try {
+          const newFlashState = !flashEnabled;
+          console.log(`🔦 Attempting to ${newFlashState ? 'enable' : 'disable'} flash...`);
+          
+          await track.applyConstraints({
+            advanced: [{ torch: newFlashState }]
+          });
+          
+          setFlashEnabled(newFlashState);
+          triggerHaptic('light');
+          console.log(`✅ Flash ${newFlashState ? 'enabled' : 'disabled'}`);
+          
+        } catch (err) {
+          console.error('❌ Flash constraint error:', err);
+          setError(`Flash error: ${err.message || 'Unable to control flash'}`);
+        }
+      } else {
         console.log('❌ Torch not supported on this device/browser');
         setError('Flash not available. Requirements: Mobile device with back camera on HTTPS.');
-        return;
       }
-
-      const newFlashState = !flashEnabled;
-      console.log(`🔦 Attempting to ${newFlashState ? 'enable' : 'disable'} flash...`);
-      
-      await track.applyConstraints({
-        advanced: [{ torch: newFlashState }]
-      });
-      
-      const settings = track.getSettings?.() || {};
-      if (typeof settings.torch === 'boolean' && settings.torch !== newFlashState) {
-        throw new Error('Camera did not confirm torch state.');
-      }
-      
-      setFlashEnabled(newFlashState);
-      triggerHaptic('light');
-      console.log(`✅ Flash ${newFlashState ? 'enabled' : 'disabled'}`);
     } catch (err) {
       console.error('❌ Flash capability check error:', err);
       setError('Unable to access camera capabilities.');
@@ -292,8 +295,8 @@ export default function FaceExtractionTool() {
     stopLightingCheck();
     stopFrameAnalysis();
     setFlashEnabled(false);
-    setTorchSupported(false);
     setLightingWarning(false);
+    setCaptureEffect(null);
   };
 
   // Cleanup on unmount
@@ -315,20 +318,47 @@ export default function FaceExtractionTool() {
     
     if (video && canvas) {
       triggerHaptic('success'); // Haptic feedback on capture
+      setCaptureEffect({ active: true });
       
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0);
-      
-      canvas.toBlob(async (blob) => {
-        const imageUrl = URL.createObjectURL(blob);
-        setCapturedImage(imageUrl);
-        stopCamera();
-        
-        // Start extraction
-        await extractFace(blob);
-      }, 'image/jpeg', 0.95);
+
+      const guide = getDocumentGuideRect();
+      const cropCanvas = document.createElement('canvas');
+      cropCanvas.width = Math.max(1, Math.round(video.videoWidth * guide.width));
+      cropCanvas.height = Math.max(1, Math.round(video.videoHeight * guide.height));
+
+      const cropCtx = cropCanvas.getContext('2d');
+      cropCtx.drawImage(
+        canvas,
+        Math.round(video.videoWidth * guide.x),
+        Math.round(video.videoHeight * guide.y),
+        Math.round(video.videoWidth * guide.width),
+        Math.round(video.videoHeight * guide.height),
+        0,
+        0,
+        cropCanvas.width,
+        cropCanvas.height
+      );
+
+      window.setTimeout(() => {
+        cropCanvas.toBlob(async (blob) => {
+          if (!blob) {
+            setCaptureEffect(null);
+            return;
+          }
+
+          const imageUrl = URL.createObjectURL(blob);
+          setCapturedImage(imageUrl);
+          stopCamera();
+          setCaptureEffect(null);
+
+          // Start extraction with the isolated ID crop
+          await extractFace(blob);
+        }, 'image/jpeg', 0.95);
+      }, 160);
     }
   };
 
@@ -389,6 +419,7 @@ export default function FaceExtractionTool() {
     setExtractionData(null);
     setOcrData(null);
     setError(null);
+    setCaptureEffect(null);
     setStep('camera');
     setTimeout(startCamera, 100);
   };
@@ -402,6 +433,7 @@ export default function FaceExtractionTool() {
     setOcrData(null);
     setError(null);
     setIdType(null);
+    setCaptureEffect(null);
     setStep('select');
     if (capturedImage) URL.revokeObjectURL(capturedImage);
     if (extractedFaceUrl) URL.revokeObjectURL(extractedFaceUrl);
@@ -414,8 +446,6 @@ export default function FaceExtractionTool() {
   const startSelfieCamera = () => {
     setStep('selfie-camera');
     setError(null);
-    setTorchSupported(false);
-    setFlashEnabled(false);
     setTimeout(async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -526,86 +556,71 @@ export default function FaceExtractionTool() {
   };
 
   return (
-    <div className="relative text-gray-900 dark:text-white transition-colors" style={{ fontFamily: 'Manrope, sans-serif' }}>
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-sky-400/10 blur-3xl dark:bg-cyan-400/10" />
-        <div className="absolute right-[-6rem] top-72 h-80 w-80 rounded-full bg-indigo-400/10 blur-3xl dark:bg-blue-500/10" />
-      </div>
-
-      <div className="relative mx-auto max-w-3xl px-4 py-6 md:py-10">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        
         {/* Header */}
-        <div className="mb-8 rounded-[2rem] border border-slate-200/80 bg-white/80 p-6 text-center shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
-          <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Secure identity workflow
-          </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-950 md:text-4xl dark:text-white">
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
             Biometrics Verification
           </h1>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600 md:text-base dark:text-white/60">
-            Capture an ID document, extract the face, and verify identity through a guided, polished flow.
+          <p className="text-gray-600 dark:text-white/60 text-sm font-light">
+            Capture an ID document, extract the face, and verify identity
           </p>
-          <div className="mx-auto mt-5 h-px w-28 bg-gradient-to-r from-transparent via-slate-300 to-transparent dark:via-white/30"></div>
+          <div className="h-0.5 w-24 bg-gradient-to-r from-blue-600 dark:from-white to-transparent mt-4 mx-auto"></div>
         </div>
 
         {/* Error */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl"
-            >
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold text-red-400 mb-1">Error</p>
-                  <p className="text-xs text-red-300/90">{error}</p>
-                </div>
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-400 mb-1">Error</p>
+                <p className="text-xs text-red-300/90">{error}</p>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+        )}
 
         {/* Step 1: Select ID Type */}
         {step === 'select' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="space-y-4"
-          >
+          <div className="space-y-4">
             <div className="text-center mb-6">
-              <p className="text-gray-700 dark:text-white/80 text-sm mb-2">Select your ID document type:</p>
+              <p className="text-gray-700 dark:text-white/75 text-sm">
+                Smart ID cards are fully supported. Older green ID books go to manual review.
+              </p>
             </div>
 
             <button
               onClick={() => selectIdType('smart')}
-              className="w-full bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 border border-slate-200 dark:border-white/20 hover:border-sky-400 dark:hover:border-white/40 rounded-2xl p-6 transition-all text-left group shadow-sm hover:shadow-md"
+              className="w-full bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 hover:border-blue-400 dark:hover:border-white/40 rounded-2xl p-6 transition-colors text-left group shadow-sm"
             >
               <div className="flex items-start space-x-4">
-                <div className="w-16 h-16 rounded-xl bg-sky-100 dark:bg-sky-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-all duration-200">
-                  <CreditCard className="w-8 h-8 text-sky-600 dark:text-sky-300" />
+                <div className="w-16 h-16 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                  <CreditCard className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Smart ID Card</h3>
-                  <p className="text-sm text-gray-600 dark:text-white/60 font-light">Card-style ID with the photo on the front</p>
-                      </div>
-                    </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Start Smart ID Capture</h3>
+                  <p className="text-sm text-gray-600 dark:text-white/60 font-light">
+                    Card-style ID with a front-facing portrait and structured data capture
+                  </p>
+                </div>
+              </div>
             </button>
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-left shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10">
+            <div className="rounded-2xl border border-dashed border-gray-300 dark:border-white/15 p-5 bg-gray-50 dark:bg-white/5">
               <div className="flex items-start space-x-3">
-                <BadgeInfo className="mt-0.5 h-5 w-5 text-amber-600 dark:text-amber-300" />
+                <BookOpen className="w-5 h-5 text-gray-500 dark:text-white/45 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Older green ID books</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-white/60">
-                    These will move to manual review because the print quality, wear, and page condition can make automated verification unreliable.
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">Green ID books</p>
+                  <p className="text-sm text-gray-600 dark:text-white/60">
+                    Route to the manual verification queue for a slower, assisted review.
                   </p>
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Step 2: Camera View */}
@@ -613,15 +628,21 @@ export default function FaceExtractionTool() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className={isMobile ? "fixed inset-0 z-50 bg-white" : "space-y-4"}
+            className={isMobile ? "fixed inset-0 z-50 bg-white dark:bg-black" : "space-y-4"}
           >
-            <div className={isMobile ? "relative h-full w-full overflow-hidden bg-white" : "relative rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)]"}>
+            <div className={isMobile 
+              ? "fixed inset-0 w-full h-full" 
+              : "relative bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden border border-gray-300 dark:border-white/10"
+            }>
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className={isMobile ? "absolute inset-0 h-full w-full object-cover" : "absolute inset-0 h-full w-full object-cover"}
+                className={isMobile 
+                  ? "absolute inset-0 w-full h-full object-cover" 
+                  : "w-full h-auto"
+                }
               />
               
               {/* Camera Guide Overlay - Different dimensions for each ID type */}
@@ -630,68 +651,77 @@ export default function FaceExtractionTool() {
                   {idType === 'smart' ? (
                     // Smart ID Card - Horizontal card shape (reduced height)
                     <>
+                      <rect
+                        x="5" y="30" width="90" height="40"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.5)"
+                        strokeWidth="0.3"
+                        strokeDasharray="2,2"
+                      />
                       {/* Corner markers */}
-                      <line x1="5" y1="30" x2="13" y2="30" stroke="white" strokeWidth="0.8" />
-                      <line x1="5" y1="30" x2="5" y2="38" stroke="white" strokeWidth="0.8" />
+                      <line x1="5" y1="30" x2="10" y2="30" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="30" x2="5" y2="35" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="95" y1="30" x2="87" y2="30" stroke="white" strokeWidth="0.8" />
-                      <line x1="95" y1="30" x2="95" y2="38" stroke="white" strokeWidth="0.8" />
+                      <line x1="95" y1="30" x2="90" y2="30" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="30" x2="95" y2="35" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="5" y1="70" x2="13" y2="70" stroke="white" strokeWidth="0.8" />
-                      <line x1="5" y1="70" x2="5" y2="62" stroke="white" strokeWidth="0.8" />
+                      <line x1="5" y1="70" x2="10" y2="70" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="70" x2="5" y2="65" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="95" y1="70" x2="87" y2="70" stroke="white" strokeWidth="0.8" />
-                      <line x1="95" y1="70" x2="95" y2="62" stroke="white" strokeWidth="0.8" />
+                      <line x1="95" y1="70" x2="90" y2="70" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="70" x2="95" y2="65" stroke="white" strokeWidth="0.5" />
                     </>
                   ) : (
                     // Green ID Book - Square shape (centered)
                     <>
+                      <rect
+                        x="20" y="30" width="60" height="40"
+                        fill="none"
+                        stroke="rgba(255,255,255,0.5)"
+                        strokeWidth="0.3"
+                        strokeDasharray="2,2"
+                      />
                       {/* Corner markers */}
-                      <line x1="20" y1="30" x2="28" y2="30" stroke="white" strokeWidth="0.8" />
-                      <line x1="20" y1="30" x2="20" y2="38" stroke="white" strokeWidth="0.8" />
+                      <line x1="20" y1="30" x2="25" y2="30" stroke="white" strokeWidth="0.5" />
+                      <line x1="20" y1="30" x2="20" y2="35" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="80" y1="30" x2="72" y2="30" stroke="white" strokeWidth="0.8" />
-                      <line x1="80" y1="30" x2="80" y2="38" stroke="white" strokeWidth="0.8" />
+                      <line x1="80" y1="30" x2="75" y2="30" stroke="white" strokeWidth="0.5" />
+                      <line x1="80" y1="30" x2="80" y2="35" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="20" y1="70" x2="28" y2="70" stroke="white" strokeWidth="0.8" />
-                      <line x1="20" y1="70" x2="20" y2="62" stroke="white" strokeWidth="0.8" />
+                      <line x1="20" y1="70" x2="25" y2="70" stroke="white" strokeWidth="0.5" />
+                      <line x1="20" y1="70" x2="20" y2="65" stroke="white" strokeWidth="0.5" />
                       
-                      <line x1="80" y1="70" x2="72" y2="70" stroke="white" strokeWidth="0.8" />
-                      <line x1="80" y1="70" x2="80" y2="62" stroke="white" strokeWidth="0.8" />
+                      <line x1="80" y1="70" x2="75" y2="70" stroke="white" strokeWidth="0.5" />
+                      <line x1="80" y1="70" x2="80" y2="65" stroke="white" strokeWidth="0.5" />
                     </>
                   )}
                 </svg>
               </div>
 
-              <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none px-4">
-                <div className="w-[92%] max-w-[34rem]">
-                  <div className="relative aspect-[1.58/1] overflow-hidden rounded-[1.2rem] border border-sky-500/60 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.22)]">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-[84%] rounded-2xl border border-white/20 bg-transparent p-4">
-                        <div className="mx-auto h-6 w-6 rounded-full border border-white/25 bg-transparent" />
-                        <div className="mt-4 space-y-2">
-                          <div className="h-2 w-3/4 rounded-full bg-white/20" />
-                          <div className="h-2 w-1/2 rounded-full bg-white/16" />
-                          <div className="h-2 w-5/6 rounded-full bg-white/20" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute inset-x-0 top-4 flex justify-center">
-                      <div className="rounded-full bg-slate-950/75 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white shadow-sm">
-                        Smart ID capture area
-                      </div>
-                    </div>
-                    <div className="absolute inset-x-0 bottom-4 flex justify-center">
-                      <div className="rounded-full bg-slate-950/90 px-3 py-1 text-[10px] font-medium text-white shadow-sm">
-                        Keep the ID fully inside the frame
-                      </div>
+              {captureEffect?.active && (
+                <div className="absolute inset-0 z-40 pointer-events-none">
+                  <div className="absolute inset-0 bg-white/85 transition-opacity duration-150" />
+                  <div
+                    className="absolute rounded-2xl border-2 border-blue-500/80 transition-all duration-150"
+                    style={{
+                      left: `${getDocumentGuideRect().x * 100}%`,
+                      top: `${getDocumentGuideRect().y * 100}%`,
+                      width: `${getDocumentGuideRect().width * 100}%`,
+                      height: `${getDocumentGuideRect().height * 100}%`,
+                      boxShadow: '0 0 0 9999px rgba(255, 255, 255, 0.88)',
+                      background: 'transparent',
+                    }}
+                  />
+                  <div className="absolute inset-x-0 bottom-20 flex justify-center">
+                    <div className="px-3 py-2 rounded-full bg-black/75 text-white text-xs font-semibold tracking-wide">
+                      Isolating document
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Progressive Feedback Overlay */}
-              <div className="absolute top-4 left-0 right-0 z-20 px-4 space-y-2">
+              <div className="absolute top-4 left-0 right-0 px-4 space-y-2 z-30">
                 <AnimatePresence mode="wait">
                   {feedback && (
                     <motion.div
@@ -701,82 +731,91 @@ export default function FaceExtractionTool() {
                       exit={{ opacity: 0, y: -10 }}
                       className="text-center"
                     >
-                      <div className="inline-block rounded-full border border-slate-200 bg-white/95 px-4 py-2 shadow-md backdrop-blur-md">
-                        <p className={`text-xs font-semibold ${isAligned ? 'text-emerald-700' : 'text-slate-700'}`}>
+                      <div className={`inline-block backdrop-blur-sm px-4 py-2 rounded-full ${
+                        isAligned 
+                          ? 'bg-green-500/90' 
+                          : (feedback.includes('dark') || feedback.includes('bright') || feedback.includes('blurry'))
+                            ? 'bg-yellow-500/90'
+                            : 'bg-black/70'
+                      }`}>
+                        <p className={`text-xs font-semibold ${
+                          isAligned ? 'text-white' : 
+                          (feedback.includes('dark') || feedback.includes('bright') || feedback.includes('blurry'))
+                            ? 'text-black'
+                            : 'text-white'
+                        }`}>
                           {feedback}
                         </p>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
+            </div>
 
               {/* Alignment Indicator */}
               {isAligned && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="absolute inset-0 z-20 pointer-events-none rounded-2xl ring-4 ring-emerald-400/70 ring-inset"
+                  className="absolute inset-0 border-4 border-green-500 rounded-2xl pointer-events-none z-20"
                 />
               )}
 
               {/* Close Button (Mobile) */}
               {isMobile && (
-                <div className="absolute top-4 left-4 z-30">
+                <div className="fixed top-4 left-4 z-50">
                   <button
                     onClick={handleReset}
-                    className="p-3 rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition-all hover:bg-slate-50"
+                    className="p-3 rounded-full bg-black/70 text-white hover:bg-black/80 backdrop-blur-sm transition-all"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-                </div>
-              )}
+            </div>
+          )}
 
               {/* Flash Toggle Button */}
-              <div className="absolute top-4 right-4 z-40">
-                {torchSupported ? (
-                  <button
-                    onClick={toggleFlash}
-                    className={`p-3 rounded-full backdrop-blur-sm transition-all ${
-                      flashEnabled
-                        ? 'border border-amber-300 bg-amber-400 text-black'
-                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                    aria-label={flashEnabled ? 'Disable flash' : 'Enable flash'}
-                    title={flashEnabled ? 'Disable flash' : 'Enable flash'}
-                  >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M7 2v11h3v9l7-12h-4l4-8z" />
-                    </svg>
-                  </button>
-                ) : (
-                  <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-md">
-                    Flash unavailable
-                  </div>
-                )}
+              <div className={isMobile 
+                ? "fixed bottom-24 right-4 z-50" 
+                : "absolute bottom-4 right-4"
+              }>
+                <button
+                  onClick={toggleFlash}
+                  className={`p-3 rounded-full backdrop-blur-sm transition-all ${
+                    flashEnabled 
+                      ? 'bg-yellow-500 text-black' 
+                      : 'bg-black/70 text-white hover:bg-black/80'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M7 2v11h3v9l7-12h-4l4-8z"/>
+                  </svg>
+                </button>
               </div>
             </div>
 
             {/* Capture Button */}
-            <div className="fixed bottom-4 left-4 right-4 z-50 grid grid-cols-2 gap-3 pb-[env(safe-area-inset-bottom)]">
+            <div className={isMobile
+              ? "fixed bottom-4 left-4 right-4 z-50 flex space-x-3"
+              : "flex space-x-3"
+            }>
               <button
                 onClick={capturePhoto}
                 disabled={!stream}
-                className="rounded-xl bg-slate-950 py-4 font-semibold text-white shadow-xl transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex-1 bg-white text-black py-4 rounded-xl font-semibold hover:bg-white/90 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="inline-flex items-center justify-center space-x-2">
-                  <Camera className="w-5 h-5" />
-                  <span>Capture Photo</span>
-                </span>
+                <Camera className="w-5 h-5" />
+                <span>Capture Photo</span>
               </button>
-              <button
-                onClick={handleReset}
-                className="rounded-xl border border-slate-200 bg-white px-6 py-4 font-semibold text-slate-700 shadow-xl transition-all hover:bg-slate-50"
-              >
-                Cancel
-              </button>
+              {!isMobile && (
+                <button
+                  onClick={handleReset}
+                  className="px-6 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
 
             {/* Tips */}
@@ -1003,11 +1042,11 @@ export default function FaceExtractionTool() {
 
               {/* ID Photo Preview */}
               <div className="mb-6">
-                <p className="text-xs text-gray-500 dark:text-white/50 text-center mb-2">Your Face Reference</p>
+                <p className="text-xs text-gray-500 dark:text-white/50 text-center mb-2">Your ID Photo</p>
                 <div className="relative w-32 h-32 mx-auto bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-300 dark:border-white/20 overflow-hidden">
                   <img
                     src={extractedFaceUrl}
-                    alt="Face reference"
+                    alt="ID face"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -1016,7 +1055,7 @@ export default function FaceExtractionTool() {
               <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 mb-6">
                 <p className="text-sm text-gray-900 dark:text-white/90 mb-3 font-medium">Ready to verify?</p>
                 <p className="text-xs text-gray-600 dark:text-white/60 mb-3 font-light">
-                  We'll compare your live selfie with the face reference above
+                  We'll compare your live selfie with the ID photo above
                 </p>
                 <div className="space-y-1.5 text-xs text-gray-600 dark:text-white/60">
                   <div className="flex items-center space-x-2">
@@ -1065,7 +1104,7 @@ export default function FaceExtractionTool() {
             className={isMobile ? "fixed inset-0 z-50 bg-white dark:bg-black" : "space-y-4"}
           >
             <div className={isMobile 
-              ? "fixed inset-0 w-full h-full bg-white dark:bg-black" 
+              ? "fixed inset-0 w-full h-full" 
               : "relative bg-gray-100 dark:bg-white/5 rounded-2xl overflow-hidden border border-gray-300 dark:border-white/10"
             }>
               <video
@@ -1073,46 +1112,31 @@ export default function FaceExtractionTool() {
                 autoPlay
                 playsInline
                 muted
-                className="absolute inset-0 w-full h-full object-cover"
+                className={isMobile 
+                  ? "absolute inset-0 w-full h-full object-cover" 
+                  : "w-full h-auto"
+                }
                 style={{ transform: 'scaleX(-1)' }}
               />
               
-              {/* Selfie Face Guide */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
-                <div className="w-[88%] max-w-[26rem]">
-                  <div className="relative aspect-square overflow-hidden rounded-[1.2rem] border border-white/70 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.22)]">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-[78%] rounded-2xl border border-white/18 bg-transparent p-4">
-                        <div className="mx-auto h-8 w-8 rounded-full border border-white/25 bg-transparent" />
-                        <div className="mt-4 space-y-2">
-                          <div className="h-2 w-3/4 rounded-full bg-white/18" />
-                          <div className="h-2 w-1/2 rounded-full bg-white/12" />
-                          <div className="h-2 w-5/6 rounded-full bg-white/18" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute inset-x-0 top-4 flex justify-center">
-                      <div className="rounded-full bg-slate-950/75 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white shadow-sm">
-                        Face reference area
-                      </div>
-                    </div>
-                    <div className="absolute inset-x-0 bottom-4 flex justify-center">
-                      <div className="rounded-full bg-slate-950/90 px-3 py-1 text-[10px] font-medium text-white shadow-sm">
-                        Center your face inside the frame
-                      </div>
-                    </div>
-                    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      <line x1="7" y1="7" x2="17" y2="7" stroke="white" strokeWidth="0.8" />
-                      <line x1="7" y1="7" x2="7" y2="17" stroke="white" strokeWidth="0.8" />
-                      <line x1="93" y1="7" x2="83" y2="7" stroke="white" strokeWidth="0.8" />
-                      <line x1="93" y1="7" x2="93" y2="17" stroke="white" strokeWidth="0.8" />
-                      <line x1="7" y1="93" x2="17" y2="93" stroke="white" strokeWidth="0.8" />
-                      <line x1="7" y1="93" x2="7" y2="83" stroke="white" strokeWidth="0.8" />
-                      <line x1="93" y1="93" x2="83" y2="93" stroke="white" strokeWidth="0.8" />
-                      <line x1="93" y1="93" x2="93" y2="83" stroke="white" strokeWidth="0.8" />
-                    </svg>
-                  </div>
-                </div>
+              {/* Oval Face Guide for Selfie */}
+              <div className="absolute inset-0 pointer-events-none" style={{ transform: 'scaleX(-1)' }}>
+                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <ellipse 
+                    cx="50" 
+                    cy="45" 
+                    rx="30" 
+                    ry="38"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.5)"
+                    strokeWidth="0.3"
+                    strokeDasharray="2,2"
+                  />
+                  {/* Guide text */}
+                  <text x="50" y="90" fontSize="3" fill="white" textAnchor="middle" opacity="0.7">
+                    Center your face in the oval
+                  </text>
+                </svg>
               </div>
 
               {/* Progressive Feedback */}
@@ -1154,10 +1178,31 @@ export default function FaceExtractionTool() {
                 </div>
               )}
 
+              {/* Flash Toggle Button */}
+              <div className={isMobile 
+                ? "fixed bottom-24 right-4 z-50" 
+                : "absolute bottom-4 right-4"
+              }>
+                <button
+                  onClick={toggleFlash}
+                  className={`p-3 rounded-full backdrop-blur-sm transition-all ${
+                    flashEnabled 
+                      ? 'bg-yellow-500 text-black' 
+                      : 'bg-black/70 text-white hover:bg-black/80'
+                  }`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Capture Button */}
-            <div className="fixed bottom-4 left-4 right-4 z-50 grid grid-cols-2 gap-3">
+            <div className={isMobile
+              ? "fixed bottom-4 left-4 right-4 z-50 flex space-x-3"
+              : "flex space-x-3"
+            }>
               <button
                 onClick={captureSelfie}
                 disabled={!stream}
@@ -1166,12 +1211,14 @@ export default function FaceExtractionTool() {
                 <Camera className="w-5 h-5" />
                 <span>Capture Selfie</span>
               </button>
-              <button
-                onClick={() => { stopCamera(); setStep('selfie-prompt'); }}
-                className="rounded-xl border border-white/20 bg-white/10 px-6 py-4 font-semibold text-white transition-all hover:bg-white/20"
-              >
-                Cancel
-              </button>
+              {!isMobile && (
+                <button
+                  onClick={() => { stopCamera(); setStep('selfie-prompt'); }}
+                  className="px-6 bg-white/10 text-white rounded-xl border border-white/20 hover:bg-white/20 transition-all"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -1189,7 +1236,7 @@ export default function FaceExtractionTool() {
                 <div className="w-24 h-24 rounded-xl border-2 border-gray-300 dark:border-white/20 overflow-hidden mb-2">
                   <img src={extractedFaceUrl} alt="ID" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-xs text-gray-500 dark:text-white/50">Face Reference</p>
+                <p className="text-xs text-gray-500 dark:text-white/50">ID Photo</p>
               </div>
 
               {/* Comparison Icon */}
@@ -1260,9 +1307,9 @@ export default function FaceExtractionTool() {
               <div className="flex items-center justify-center space-x-6 mb-6">
                 <div className="text-center">
                   <div className="w-28 h-28 rounded-xl border-2 border-gray-300 dark:border-white/20 overflow-hidden mb-2">
-                    <img src={extractedFaceUrl} alt="Face reference" className="w-full h-full object-cover" />
+                    <img src={extractedFaceUrl} alt="ID" className="w-full h-full object-cover" />
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-white/50">Face Reference</p>
+                  <p className="text-xs text-gray-500 dark:text-white/50">ID Photo</p>
                 </div>
 
                 <div className="text-2xl text-gray-900 dark:text-white">
