@@ -621,81 +621,62 @@ export default function FaceExtractionTool() {
                   {idType === 'smart' ? (
                     // Smart ID Card - Horizontal card shape (reduced height)
                     <>
-                      <rect
-                        x="5" y="30" width="90" height="40"
-                        fill="none"
-                        stroke="rgba(255,255,255,0.5)"
-                        strokeWidth="0.3"
-                        strokeDasharray="2,2"
-                      />
                       {/* Corner markers */}
-                      <line x1="5" y1="30" x2="10" y2="30" stroke="white" strokeWidth="0.5" />
-                      <line x1="5" y1="30" x2="5" y2="35" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="30" x2="13" y2="30" stroke="white" strokeWidth="0.8" />
+                      <line x1="5" y1="30" x2="5" y2="38" stroke="white" strokeWidth="0.8" />
                       
-                      <line x1="95" y1="30" x2="90" y2="30" stroke="white" strokeWidth="0.5" />
-                      <line x1="95" y1="30" x2="95" y2="35" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="30" x2="87" y2="30" stroke="white" strokeWidth="0.8" />
+                      <line x1="95" y1="30" x2="95" y2="38" stroke="white" strokeWidth="0.8" />
                       
-                      <line x1="5" y1="70" x2="10" y2="70" stroke="white" strokeWidth="0.5" />
-                      <line x1="5" y1="70" x2="5" y2="65" stroke="white" strokeWidth="0.5" />
+                      <line x1="5" y1="70" x2="13" y2="70" stroke="white" strokeWidth="0.8" />
+                      <line x1="5" y1="70" x2="5" y2="62" stroke="white" strokeWidth="0.8" />
                       
-                      <line x1="95" y1="70" x2="90" y2="70" stroke="white" strokeWidth="0.5" />
-                      <line x1="95" y1="70" x2="95" y2="65" stroke="white" strokeWidth="0.5" />
+                      <line x1="95" y1="70" x2="87" y2="70" stroke="white" strokeWidth="0.8" />
+                      <line x1="95" y1="70" x2="95" y2="62" stroke="white" strokeWidth="0.8" />
                     </>
                   ) : (
                     // Green ID Book - Square shape (centered)
                     <>
-                      <rect
-                        x="20" y="30" width="60" height="40"
-                        fill="none"
-                        stroke="rgba(255,255,255,0.5)"
-                        strokeWidth="0.3"
-                        strokeDasharray="2,2"
-                      />
                       {/* Corner markers */}
-                      <line x1="20" y1="30" x2="25" y2="30" stroke="white" strokeWidth="0.5" />
-                      <line x1="20" y1="30" x2="20" y2="35" stroke="white" strokeWidth="0.5" />
+                      <line x1="20" y1="30" x2="28" y2="30" stroke="white" strokeWidth="0.8" />
+                      <line x1="20" y1="30" x2="20" y2="38" stroke="white" strokeWidth="0.8" />
                       
-                      <line x1="80" y1="30" x2="75" y2="30" stroke="white" strokeWidth="0.5" />
-                      <line x1="80" y1="30" x2="80" y2="35" stroke="white" strokeWidth="0.5" />
+                      <line x1="80" y1="30" x2="72" y2="30" stroke="white" strokeWidth="0.8" />
+                      <line x1="80" y1="30" x2="80" y2="38" stroke="white" strokeWidth="0.8" />
                       
-                      <line x1="20" y1="70" x2="25" y2="70" stroke="white" strokeWidth="0.5" />
-                      <line x1="20" y1="70" x2="20" y2="65" stroke="white" strokeWidth="0.5" />
+                      <line x1="20" y1="70" x2="28" y2="70" stroke="white" strokeWidth="0.8" />
+                      <line x1="20" y1="70" x2="20" y2="62" stroke="white" strokeWidth="0.8" />
                       
-                      <line x1="80" y1="70" x2="75" y2="70" stroke="white" strokeWidth="0.5" />
-                      <line x1="80" y1="70" x2="80" y2="65" stroke="white" strokeWidth="0.5" />
+                      <line x1="80" y1="70" x2="72" y2="70" stroke="white" strokeWidth="0.8" />
+                      <line x1="80" y1="70" x2="80" y2="62" stroke="white" strokeWidth="0.8" />
                     </>
                   )}
                 </svg>
               </div>
 
               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none px-4">
-                <div className="w-[92%] max-w-[34rem] rounded-[1.5rem] border border-slate-200/80 bg-white/55 p-3 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-                  <div className="relative aspect-[1.58/1] overflow-hidden rounded-[1rem] border border-sky-500/70 bg-gradient-to-br from-slate-50 to-slate-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)]">
-                    <div className="absolute inset-0 opacity-70" style={{ backgroundImage: 'linear-gradient(rgba(148,163,184,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.2) 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-                    <div className="absolute inset-x-0 top-4 flex justify-center">
-                      <div className="rounded-full bg-white/95 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-700 shadow-sm">
-                        Smart ID capture area
+                <div className="w-[92%] max-w-[34rem]">
+                  <div className="relative aspect-[1.58/1] overflow-hidden rounded-[1.2rem] border border-sky-500/60 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.22)]">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-[84%] rounded-2xl border border-white/20 bg-transparent p-4">
+                        <div className="mx-auto h-6 w-6 rounded-full border border-white/25 bg-transparent" />
+                        <div className="mt-4 space-y-2">
+                          <div className="h-2 w-3/4 rounded-full bg-white/20" />
+                          <div className="h-2 w-1/2 rounded-full bg-white/16" />
+                          <div className="h-2 w-5/6 rounded-full bg-white/20" />
+                        </div>
                       </div>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-[62%] rounded-2xl border border-slate-300 bg-white p-4 shadow-sm">
-                        <div className="mx-auto h-6 w-6 rounded-full bg-slate-200" />
-                        <div className="mt-4 space-y-2">
-                          <div className="h-2 w-3/4 rounded-full bg-slate-200" />
-                          <div className="h-2 w-1/2 rounded-full bg-slate-200" />
-                          <div className="h-2 w-5/6 rounded-full bg-slate-200" />
-                        </div>
+                    <div className="absolute inset-x-0 top-4 flex justify-center">
+                      <div className="rounded-full bg-slate-950/75 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white shadow-sm">
+                        Smart ID capture area
                       </div>
                     </div>
                     <div className="absolute inset-x-0 bottom-4 flex justify-center">
                       <div className="rounded-full bg-slate-950/90 px-3 py-1 text-[10px] font-medium text-white shadow-sm">
-                        Keep the Smart ID fully inside the frame
+                        Keep the ID fully inside the frame
                       </div>
                     </div>
-                    <div className="absolute left-3 top-3 h-6 w-6 rounded-tl-lg border-l-2 border-t-2 border-sky-500" />
-                    <div className="absolute right-3 top-3 h-6 w-6 rounded-tr-lg border-r-2 border-t-2 border-sky-500" />
-                    <div className="absolute bottom-3 left-3 h-6 w-6 rounded-bl-lg border-b-2 border-l-2 border-sky-500" />
-                    <div className="absolute bottom-3 right-3 h-6 w-6 rounded-br-lg border-b-2 border-r-2 border-sky-500" />
                   </div>
                 </div>
               </div>
@@ -745,10 +726,7 @@ export default function FaceExtractionTool() {
           )}
 
               {/* Flash Toggle Button */}
-              <div className={isMobile 
-                ? "absolute bottom-24 right-4 z-30" 
-                : "absolute bottom-4 right-4"
-              }>
+              <div className="absolute top-4 right-4 z-40">
                 <button
                   onClick={toggleFlash}
                   className={`p-3 rounded-full backdrop-blur-sm transition-all ${
@@ -765,11 +743,11 @@ export default function FaceExtractionTool() {
             </div>
 
             {/* Capture Button */}
-            <div className={isMobile ? "fixed bottom-4 left-4 right-4 z-50 space-y-3" : "flex space-x-3"}>
+            <div className={isMobile ? "fixed bottom-4 left-4 right-4 z-50 grid grid-cols-2 gap-3" : "flex space-x-3"}>
               <button
                 onClick={capturePhoto}
                 disabled={!stream}
-                className="flex-1 rounded-xl bg-slate-950 py-4 font-semibold text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-slate-950 py-4 font-semibold text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="inline-flex items-center justify-center space-x-2">
                   <Camera className="w-5 h-5" />
