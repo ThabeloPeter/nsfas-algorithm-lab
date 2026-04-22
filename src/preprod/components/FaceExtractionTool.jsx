@@ -1003,11 +1003,11 @@ export default function FaceExtractionTool() {
 
               {/* ID Photo Preview */}
               <div className="mb-6">
-                <p className="text-xs text-gray-500 dark:text-white/50 text-center mb-2">Your ID Photo</p>
+                <p className="text-xs text-gray-500 dark:text-white/50 text-center mb-2">Your Face Reference</p>
                 <div className="relative w-32 h-32 mx-auto bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-300 dark:border-white/20 overflow-hidden">
                   <img
                     src={extractedFaceUrl}
-                    alt="ID face"
+                    alt="Face reference"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -1016,7 +1016,7 @@ export default function FaceExtractionTool() {
               <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 mb-6">
                 <p className="text-sm text-gray-900 dark:text-white/90 mb-3 font-medium">Ready to verify?</p>
                 <p className="text-xs text-gray-600 dark:text-white/60 mb-3 font-light">
-                  We'll compare your live selfie with the ID photo above
+                  We'll compare your live selfie with the face reference above
                 </p>
                 <div className="space-y-1.5 text-xs text-gray-600 dark:text-white/60">
                   <div className="flex items-center space-x-2">
@@ -1078,7 +1078,7 @@ export default function FaceExtractionTool() {
               />
               
               {/* Selfie Face Guide */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4" style={{ transform: 'scaleX(-1)' }}>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
                 <div className="w-[88%] max-w-[26rem]">
                   <div className="relative aspect-square overflow-hidden rounded-[1.2rem] border border-white/70 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.22)]">
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -1093,7 +1093,7 @@ export default function FaceExtractionTool() {
                     </div>
                     <div className="absolute inset-x-0 top-4 flex justify-center">
                       <div className="rounded-full bg-slate-950/75 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white shadow-sm">
-                        Selfie capture area
+                        Face reference area
                       </div>
                     </div>
                     <div className="absolute inset-x-0 bottom-4 flex justify-center">
@@ -1189,7 +1189,7 @@ export default function FaceExtractionTool() {
                 <div className="w-24 h-24 rounded-xl border-2 border-gray-300 dark:border-white/20 overflow-hidden mb-2">
                   <img src={extractedFaceUrl} alt="ID" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-xs text-gray-500 dark:text-white/50">ID Photo</p>
+                <p className="text-xs text-gray-500 dark:text-white/50">Face Reference</p>
               </div>
 
               {/* Comparison Icon */}
@@ -1260,9 +1260,9 @@ export default function FaceExtractionTool() {
               <div className="flex items-center justify-center space-x-6 mb-6">
                 <div className="text-center">
                   <div className="w-28 h-28 rounded-xl border-2 border-gray-300 dark:border-white/20 overflow-hidden mb-2">
-                    <img src={extractedFaceUrl} alt="ID" className="w-full h-full object-cover" />
+                    <img src={extractedFaceUrl} alt="Face reference" className="w-full h-full object-cover" />
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-white/50">ID Photo</p>
+                  <p className="text-xs text-gray-500 dark:text-white/50">Face Reference</p>
                 </div>
 
                 <div className="text-2xl text-gray-900 dark:text-white">
