@@ -548,6 +548,16 @@ export default function FaceExtractionTool() {
     document.body.removeChild(a);
   };
 
+  const handleDownloadDocument = () => {
+    if (!capturedImage) return;
+    const a = document.createElement('a');
+    a.href = capturedImage;
+    a.download = `isolated_id_card_${Date.now()}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
       <div className="max-w-2xl mx-auto px-4 py-8">
@@ -875,6 +885,31 @@ export default function FaceExtractionTool() {
                 <span>Download Face</span>
                     </button>
               </div>
+
+              {capturedImage && (
+                <div className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Isolated Smart ID</h3>
+                    <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-400" />
+                  </div>
+
+                  <div className="relative aspect-[1.58/1] max-w-full mx-auto bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-300 dark:border-white/20 overflow-hidden mb-4">
+                    <img
+                      src={capturedImage}
+                      alt="Isolated Smart ID"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleDownloadDocument}
+                    className="w-full py-3 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-white/90 text-white dark:text-black rounded-lg transition-all font-medium text-sm flex items-center justify-center space-x-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download ID Card</span>
+                  </button>
+                </div>
+              )}
 
               {/* Stats */}
               {extractionData && (
