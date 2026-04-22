@@ -21,7 +21,6 @@ export default function FaceExtractionTool() {
   const [feedback, setFeedback] = useState(''); // Progressive feedback message
   const [isAligned, setIsAligned] = useState(false); // Whether ID is properly aligned
   const [isMobile, setIsMobile] = useState(false); // Mobile device detection
-  const [captureEffect, setCaptureEffect] = useState(null);
   
   // New states for selfie verification
   const [selfieImage, setSelfieImage] = useState(null);
@@ -296,7 +295,6 @@ export default function FaceExtractionTool() {
     stopFrameAnalysis();
     setFlashEnabled(false);
     setLightingWarning(false);
-    setCaptureEffect(null);
   };
 
   // Cleanup on unmount
@@ -318,7 +316,6 @@ export default function FaceExtractionTool() {
     
     if (video && canvas) {
       triggerHaptic('success'); // Haptic feedback on capture
-      setCaptureEffect({ active: true });
       
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -346,14 +343,12 @@ export default function FaceExtractionTool() {
       window.setTimeout(() => {
         cropCanvas.toBlob(async (blob) => {
           if (!blob) {
-            setCaptureEffect(null);
             return;
           }
 
           const imageUrl = URL.createObjectURL(blob);
           setCapturedImage(imageUrl);
           stopCamera();
-          setCaptureEffect(null);
 
           // Start extraction with the isolated ID crop
           await extractFace(blob);
@@ -419,7 +414,6 @@ export default function FaceExtractionTool() {
     setExtractionData(null);
     setOcrData(null);
     setError(null);
-    setCaptureEffect(null);
     setStep('camera');
     setTimeout(startCamera, 100);
   };
@@ -433,7 +427,6 @@ export default function FaceExtractionTool() {
     setOcrData(null);
     setError(null);
     setIdType(null);
-    setCaptureEffect(null);
     setStep('select');
     if (capturedImage) URL.revokeObjectURL(capturedImage);
     if (extractedFaceUrl) URL.revokeObjectURL(extractedFaceUrl);
@@ -697,28 +690,6 @@ export default function FaceExtractionTool() {
                   )}
                 </svg>
               </div>
-
-              {captureEffect?.active && (
-                <div className="absolute inset-0 z-40 pointer-events-none">
-                  <div className="absolute inset-0 bg-white/85 transition-opacity duration-150" />
-                  <div
-                    className="absolute rounded-2xl border-2 border-blue-500/80 transition-all duration-150"
-                    style={{
-                      left: `${getDocumentGuideRect().x * 100}%`,
-                      top: `${getDocumentGuideRect().y * 100}%`,
-                      width: `${getDocumentGuideRect().width * 100}%`,
-                      height: `${getDocumentGuideRect().height * 100}%`,
-                      boxShadow: '0 0 0 9999px rgba(255, 255, 255, 0.88)',
-                      background: 'transparent',
-                    }}
-                  />
-                  <div className="absolute inset-x-0 bottom-20 flex justify-center">
-                    <div className="px-3 py-2 rounded-full bg-black/75 text-white text-xs font-semibold tracking-wide">
-                      Isolating document
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Progressive Feedback Overlay */}
               <div className="absolute top-4 left-0 right-0 px-4 space-y-2 z-30">
