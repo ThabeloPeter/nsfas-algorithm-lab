@@ -854,6 +854,19 @@ export default function FaceExtractionTool() {
                     />
                     </div>
 
+              {ocrData?.success && (
+                <div className="mb-4 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3 text-center">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 dark:text-white/40 mb-1">
+                    ID Number
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {ocrData?.fields?.idNumber?.value ||
+                      ocrData?.candidateIdNumbers?.[0] ||
+                      'Not detected'}
+                  </p>
+                </div>
+              )}
+
                     <button
                       onClick={handleDownload}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 dark:bg-white text-white dark:text-black rounded-lg dark:hover:bg-white/90 transition-all font-medium text-sm flex items-center justify-center space-x-2"
