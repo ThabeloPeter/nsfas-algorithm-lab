@@ -1078,37 +1078,41 @@ export default function FaceExtractionTool() {
               />
               
               {/* Selfie Face Guide */}
-              <div className="absolute inset-0 pointer-events-none" style={{ transform: 'scaleX(-1)' }}>
-                <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <defs>
-                    <mask id="selfie-focus-mask">
-                      <rect x="0" y="0" width="100" height="100" fill="white" />
-                      <ellipse cx="50" cy="43" rx="28" ry="36" fill="black" />
-                    </mask>
-                  </defs>
-                  <rect x="0" y="0" width="100" height="100" fill="rgba(8,12,20,0.16)" mask="url(#selfie-focus-mask)" />
-                  <ellipse 
-                    cx="50" 
-                    cy="43" 
-                    rx="28" 
-                    ry="36"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.72)"
-                    strokeWidth="0.35"
-                  />
-                  <ellipse 
-                    cx="50" 
-                    cy="43" 
-                    rx="22" 
-                    ry="30"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.18)"
-                    strokeWidth="0.2"
-                  />
-                  <text x="50" y="90" fontSize="3" fill="white" textAnchor="middle" opacity="0.8">
-                    Center your face inside the frame
-                  </text>
-                </svg>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4" style={{ transform: 'scaleX(-1)' }}>
+                <div className="w-[88%] max-w-[26rem]">
+                  <div className="relative aspect-square overflow-hidden rounded-[1.2rem] border border-white/70 bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,0.22)]">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-[78%] rounded-2xl border border-white/18 bg-transparent p-4">
+                        <div className="mx-auto h-8 w-8 rounded-full border border-white/25 bg-transparent" />
+                        <div className="mt-4 space-y-2">
+                          <div className="h-2 w-3/4 rounded-full bg-white/18" />
+                          <div className="h-2 w-1/2 rounded-full bg-white/12" />
+                          <div className="h-2 w-5/6 rounded-full bg-white/18" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute inset-x-0 top-4 flex justify-center">
+                      <div className="rounded-full bg-slate-950/75 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white shadow-sm">
+                        Selfie capture area
+                      </div>
+                    </div>
+                    <div className="absolute inset-x-0 bottom-4 flex justify-center">
+                      <div className="rounded-full bg-slate-950/90 px-3 py-1 text-[10px] font-medium text-white shadow-sm">
+                        Center your face inside the frame
+                      </div>
+                    </div>
+                    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <line x1="7" y1="7" x2="17" y2="7" stroke="white" strokeWidth="0.8" />
+                      <line x1="7" y1="7" x2="7" y2="17" stroke="white" strokeWidth="0.8" />
+                      <line x1="93" y1="7" x2="83" y2="7" stroke="white" strokeWidth="0.8" />
+                      <line x1="93" y1="7" x2="93" y2="17" stroke="white" strokeWidth="0.8" />
+                      <line x1="7" y1="93" x2="17" y2="93" stroke="white" strokeWidth="0.8" />
+                      <line x1="7" y1="93" x2="7" y2="83" stroke="white" strokeWidth="0.8" />
+                      <line x1="93" y1="93" x2="83" y2="93" stroke="white" strokeWidth="0.8" />
+                      <line x1="93" y1="93" x2="93" y2="83" stroke="white" strokeWidth="0.8" />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               {/* Progressive Feedback */}
