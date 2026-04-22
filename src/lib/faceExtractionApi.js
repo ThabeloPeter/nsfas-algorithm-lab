@@ -45,9 +45,22 @@ const readErrorMessage = async (response) => {
   const jsonClone = response.clone();
   const textClone = response.clone();
 
+  const normalizeMessage = (detail) => {
+    if (!detail) {
+      return `Server error: ${response.status}`;
+    }
+    if (typeof detail === 'string') {
+      return detail;
+    }
+    if (typeof detail === 'object') {
+      return detail.message || detail.error || detail.detail || JSON.stringify(detail);
+    }
+    return String(detail);
+  };
+
   try {
     const data = await readJsonWithTimeout(jsonClone, 8000);
-    return data?.detail || data?.error || `Server error: ${response.status}`;
+    return normalizeMessage(data?.detail || data?.error || data?.message);
   } catch {
     try {
       const text = await textClone.text();

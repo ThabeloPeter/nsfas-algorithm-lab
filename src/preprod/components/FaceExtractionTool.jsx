@@ -16,6 +16,7 @@ export default function FaceExtractionTool() {
   const [ocrData, setOcrData] = useState(null); // OCR extracted ID fields
   const [documentReport, setDocumentReport] = useState(null);
   const [documentAuthenticity, setDocumentAuthenticity] = useState(null);
+  const [documentQuality, setDocumentQuality] = useState(null);
   const [stream, setStream] = useState(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [lightingWarning, setLightingWarning] = useState(false);
@@ -393,6 +394,7 @@ export default function FaceExtractionTool() {
 
       setDocumentAuthenticity(result.metadata.document_authenticity || null);
       setDocumentReport(result.metadata.document_report || null);
+      setDocumentQuality(result.metadata.image_quality || null);
 
       // Store OCR data
       setOcrData(result.ocrData);
@@ -420,6 +422,7 @@ export default function FaceExtractionTool() {
     setOcrData(null);
     setDocumentReport(null);
     setDocumentAuthenticity(null);
+    setDocumentQuality(null);
     setError(null);
     setStep('camera');
     setTimeout(startCamera, 100);
@@ -434,6 +437,7 @@ export default function FaceExtractionTool() {
     setOcrData(null);
     setDocumentReport(null);
     setDocumentAuthenticity(null);
+    setDocumentQuality(null);
     setError(null);
     setIdType(null);
     setStep('select');
@@ -883,6 +887,27 @@ export default function FaceExtractionTool() {
                       ocrData?.candidateIdNumbers?.[0] ||
                       'Not detected'}
                   </p>
+                </div>
+              )}
+
+              {documentQuality && documentQuality.quality !== 'good' && (
+                <div className={`mb-4 rounded-xl border px-4 py-3 ${
+                  documentQuality.should_reject
+                    ? 'border-red-500/30 bg-red-500/10'
+                    : 'border-yellow-500/30 bg-yellow-500/10'
+                }`}>
+                  <p className={`text-xs font-semibold uppercase tracking-[0.2em] mb-2 ${
+                    documentQuality.should_reject ? 'text-red-300' : 'text-yellow-300'
+                  }`}>
+                    Document Quality {documentQuality.should_reject ? 'Rejected' : 'Warning'}
+                  </p>
+                  <div className="space-y-1">
+                    {documentQuality.issues?.slice(0, 4).map((issue, index) => (
+                      <p key={index} className="text-sm text-gray-900 dark:text-white">
+                        {issue}
+                      </p>
+                    ))}
+                  </div>
                 </div>
               )}
 
