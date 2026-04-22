@@ -14,6 +14,8 @@ export default function FaceExtractionTool() {
   const [error, setError] = useState(null);
   const [extractionData, setExtractionData] = useState(null);
   const [ocrData, setOcrData] = useState(null); // OCR extracted ID fields
+  const [documentReport, setDocumentReport] = useState(null);
+  const [documentAuthenticity, setDocumentAuthenticity] = useState(null);
   const [stream, setStream] = useState(null);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [lightingWarning, setLightingWarning] = useState(false);
@@ -389,6 +391,9 @@ export default function FaceExtractionTool() {
         allFaces: result.metadata.all_faces
       });
 
+      setDocumentAuthenticity(result.metadata.document_authenticity || null);
+      setDocumentReport(result.metadata.document_report || null);
+
       // Store OCR data
       setOcrData(result.ocrData);
 
@@ -413,6 +418,8 @@ export default function FaceExtractionTool() {
     setExtractedFaceUrl(null);
     setExtractionData(null);
     setOcrData(null);
+    setDocumentReport(null);
+    setDocumentAuthenticity(null);
     setError(null);
     setStep('camera');
     setTimeout(startCamera, 100);
@@ -425,6 +432,8 @@ export default function FaceExtractionTool() {
     setExtractedFaceUrl(null);
     setExtractionData(null);
     setOcrData(null);
+    setDocumentReport(null);
+    setDocumentAuthenticity(null);
     setError(null);
     setIdType(null);
     setStep('select');
@@ -908,6 +917,64 @@ export default function FaceExtractionTool() {
                     <Download className="w-4 h-4" />
                     <span>Download ID Card</span>
                   </button>
+                </div>
+              )}
+
+              {(documentAuthenticity || documentReport) && (
+                <div className="bg-white dark:bg-white/5 rounded-2xl border border-gray-300 dark:border-white/10 p-6 shadow-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Document Trust Summary</h3>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        documentAuthenticity?.manual_review_required
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'bg-green-500/20 text-green-400'
+                      }`}
+                    >
+                      {documentAuthenticity?.manual_review_required ? 'Review recommended' : 'Looks consistent'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Authenticity Score</p>
+                      <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                        {documentAuthenticity?.score ?? documentReport?.summary?.score ?? 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-100 dark:bg-white/5 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500 dark:text-white/50 mb-1">Detected Fields</p>
+                      <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                        {documentReport?.summary?.recognized_fields ?? ocrData?.fieldsExtracted ?? 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-white/60">Detected elements</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {documentReport?.summary?.recognized_elements ?? documentAuthenticity?.detected_features?.length ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600 dark:text-white/60">Manual review</span>
+                      <span className={`font-semibold ${documentAuthenticity?.manual_review_required ? 'text-yellow-400' : 'text-green-400'}`}>
+                        {documentAuthenticity?.manual_review_required ? 'Required' : 'Not required'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {documentReport?.recommendation && (
+                    <div className="mt-4 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.2em] text-gray-500 dark:text-white/40 mb-1">
+                        Recommendation
+                      </p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {documentReport.recommendation}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
